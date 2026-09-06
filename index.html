@@ -43,6 +43,7 @@
   .item-timecol{ flex:0 0 44px; text-align:right; padding-top:2px; }
   .item-timecol .t1{ font-size:11.5px; color:var(--ink); font-weight:700; }
   .item-timecol .t2{ font-size:10px; color:var(--ink-soft); margin-top:1px; }
+  .item-timecol .t3{ font-size:9px; color:var(--ink-soft); margin-top:3px; }
   .item-rail{ display:flex; flex-direction:column; align-items:center; width:14px; padding-top:4px; }
   .item-rail .dot{ width:9px; height:9px; border-radius:50%; background:var(--navy); flex:0 0 9px; }
   .item-rail .line{ width:2px; flex:1; background:var(--line); margin-top:4px; }
@@ -499,6 +500,7 @@ function renderTimeline(){
       <div class="item-timecol">
         <div class="t1">${it.time||'--:--'}</div>
         ${it.endTime?`<div class="t2">${it.endTime}</div>`:''}
+        ${durationText?`<div class="t3">⏱ ${durationText}</div>`:''}
       </div>
       <div class="item-rail">
         <div class="dot"></div>
@@ -512,7 +514,6 @@ function renderTimeline(){
             <div class="item-title">${escapeHtml(it.title||'未命名')}</div>
             ${it.desc?`<div class="item-desc">${escapeHtml(it.desc)}</div>`:''}
             <div class="item-meta">
-              ${durationText?`<span class="duration-pill">⏱ ${durationText}</span>`:''}
               ${it.mapcode?`<span class="duration-pill">🗺 ${escapeHtml(it.mapcode)}</span>`:''}
               <div class="item-actions">
                 <button class="icon-btn edit" onclick="editItem('${it.id}')">✎</button>
