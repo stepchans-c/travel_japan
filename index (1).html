@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>日本行程 Japan Trip</title>
+<style>
+  :root{
+    --bg: #EAEEF3;
+    --card: #FFFFFF;
+    --ink: #1C2740;
+    --ink-soft: #7E8CA3;
+    --navy: #26344F;
+    --navy-soft: #3B4A68;
+    --line: #D6DDE7;
+    --accent: #4A6FA5;
+    --green: #5B9279;
+    --shadow: 0 2px 10px rgba(28,39,64,0.07);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  body{ margin:0; font-family: -apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif; background:var(--bg); color:var(--ink); display:flex; justify-content:center; }
+  #app{ width:100%; max-width:480px; min-height:100vh; background:var(--bg); position:relative; padding-bottom:76px; }
+
+  .topbar{ padding:18px 18px 8px; display:flex; align-items:center; justify-content:space-between; }
+  .topbar h1{ font-size:17px; font-weight:700; margin:0; }
+  .topbar .sub{ font-size:11px; color:var(--ink-soft); margin-top:2px; }
+
+  .day-tabs{ display:flex; gap:8px; overflow-x:auto; padding:6px 14px 14px; scrollbar-width:none; }
+  .day-tabs::-webkit-scrollbar{ display:none; }
+  .day-tab{ flex:0 0 auto; width:46px; padding:8px 0 7px; border-radius:14px; text-align:center; background:var(--card); box-shadow:var(--shadow); cursor:pointer; }
+  .day-tab .dow{ font-size:9px; color:var(--ink-soft); font-weight:600; }
+  .day-tab .num{ font-size:16px; font-weight:700; margin-top:2px; }
+  .day-tab.active{ background:var(--navy); }
+  .day-tab.active .dow, .day-tab.active .num{ color:#fff; }
+  .day-tab .dot{ width:4px; height:4px; border-radius:50%; background:var(--accent); margin:4px auto 0; opacity:0; }
+  .day-tab.has-items .dot{ opacity:1; }
+  .day-tab.active .dot{ background:#fff; }
+
+  .day-title{ padding:2px 18px 14px; font-size:13px; color:var(--ink-soft); font-weight:600; }
+
+  .timeline{ padding:0 18px; display:flex; flex-direction:column; }
+  .item-row{ display:flex; gap:12px; }
+  .item-rail{ display:flex; flex-direction:column; align-items:center; width:16px; }
+  .item-rail .line{ width:2px; flex:1; background:var(--line); margin-top:2px; }
+  .card{ background:var(--card); border-radius:16px; box-shadow:var(--shadow); padding:12px 14px; margin-bottom:14px; flex:1; position:relative; }
+  .item-time{ font-size:11px; color:var(--ink-soft); font-weight:700; margin-bottom:6px; }
+  .item-main{ display:flex; gap:10px; }
+  .item-media{ width:56px; height:56px; border-radius:12px; flex:0 0 56px; overflow:hidden; display:flex; align-items:center; justify-content:center; font-size:20px; }
+  .item-media img{ width:100%; height:100%; object-fit:cover; }
+  .item-body{ flex:1; min-width:0; padding-right:26px; }
+  .item-title{ font-size:14.5px; font-weight:700; }
+  .item-desc{ font-size:12px; color:var(--ink-soft); margin-top:3px; line-height:1.5; }
+  .item-meta{ display:flex; align-items:center; gap:6px; margin-top:8px; }
+  .duration-pill{ font-size:10.5px; color:var(--ink-soft); background:#EEF1F5; padding:2px 8px; border-radius:20px; }
+  .item-actions{ display:flex; gap:8px; margin-left:auto; }
+  .icon-btn{ width:28px; height:28px; border-radius:8px; border:none; background:#EEF1F5; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:13px; }
+  .icon-btn.edit{ color:var(--ink-soft); }
+  .icon-btn.del{ color:#B24A3B; }
+  .map-pin{ position:absolute; top:10px; right:10px; width:26px; height:26px; border-radius:50%; background:var(--accent); color:#fff; border:none; display:flex; align-items:center; justify-content:center; font-size:12px; cursor:pointer; }
+
+  .empty-state{ text-align:center; padding:60px 30px; color:var(--ink-soft); }
+  .empty-state .em{ font-size:32px; margin-bottom:10px; }
+  .empty-state .t{ font-size:13.5px; }
+
+  .fab{ position:fixed; bottom:92px; right:calc(50% - 240px + 20px); width:52px; height:52px; border-radius:50%; background:var(--navy); color:#fff; border:none; font-size:24px; box-shadow:0 6px 16px rgba(38,52,79,0.35); display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:20; }
+  @media (max-width:520px){ .fab{ right:20px; } }
+
+  .section-header{ padding:18px 18px 4px; display:flex; align-items:center; justify-content:space-between; }
+  .section-header h1{ font-size:19px; margin:0; font-weight:800; }
+  .add-link{ font-size:13px; color:var(--navy); font-weight:700; background:none; border:none; cursor:pointer; }
+
+  .tabs-row{ display:flex; gap:8px; padding:10px 18px 14px; overflow-x:auto; scrollbar-width:none; }
+  .tabs-row::-webkit-scrollbar{ display:none; }
+  .chip{ flex:0 0 auto; padding:7px 14px; border-radius:20px; background:var(--card); font-size:12.5px; font-weight:600; color:var(--ink-soft); box-shadow:var(--shadow); cursor:pointer; }
+  .chip.active{ background:var(--navy); color:#fff; }
+  .chip.manage{ background:transparent; box-shadow:none; border:1.5px dashed var(--line); color:var(--ink-soft); }
+
+  .cat-group{ padding:0 18px; margin-bottom:6px; }
+  .cat-group-head{ display:flex; align-items:center; gap:6px; padding:10px 2px 8px; font-size:13px; font-weight:700; }
+  .cat-dot{ width:8px; height:8px; border-radius:50%; }
+  .buy-item{ display:flex; align-items:center; gap:12px; background:var(--card); border-radius:14px; padding:12px 14px; margin-bottom:9px; box-shadow:var(--shadow); }
+  .buy-media{ width:40px; height:40px; border-radius:10px; flex:0 0 40px; overflow:hidden; display:flex; align-items:center; justify-content:center; font-size:15px; }
+  .buy-media img{ width:100%; height:100%; object-fit:cover; }
+  .buy-body{ flex:1; min-width:0; }
+  .buy-location{ font-size:11px; color:var(--ink-soft); margin-top:2px; }
+  .checkbox{ width:21px; height:21px; border-radius:50%; border:2px solid #D3D8E0; flex:0 0 21px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:12px; color:#fff; }
+  .checkbox.checked{ background:var(--green); border-color:var(--green); }
+  .buy-name{ flex:1; font-size:14px; font-weight:600; }
+  .buy-name.done{ text-decoration:line-through; color:var(--ink-soft); }
+
+  .summary-card{ margin:6px 18px 16px; background:var(--card); border-radius:18px; box-shadow:var(--shadow); padding:18px; }
+  .summary-top{ display:flex; justify-content:space-between; }
+  .summary-total .lbl{ font-size:12px; color:var(--ink-soft); }
+  .summary-total .val{ font-size:24px; font-weight:800; margin-top:2px; }
+  .summary-avg{ text-align:right; }
+  .summary-avg .lbl{ font-size:12px; color:var(--ink-soft); }
+  .summary-avg .val{ font-size:15px; font-weight:700; margin-top:2px; }
+  .bars{ margin-top:16px; display:flex; flex-direction:column; gap:9px; }
+  .bar-row{ display:flex; align-items:center; gap:8px; }
+  .bar-label{ width:64px; font-size:11.5px; color:var(--ink-soft); flex:0 0 64px; }
+  .bar-track{ flex:1; height:8px; border-radius:6px; background:#EEF1F5; overflow:hidden; }
+  .bar-fill{ height:100%; border-radius:6px; }
+  .bar-pct{ width:38px; text-align:right; font-size:11px; color:var(--ink-soft); flex:0 0 38px; }
+
+  .tx-row{ display:flex; align-items:center; gap:12px; background:var(--card); border-radius:14px; padding:12px 14px; margin:0 18px 9px; box-shadow:var(--shadow); }
+  .tx-icon{ width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:16px; flex:0 0 34px; }
+  .tx-body{ flex:1; min-width:0; }
+  .tx-desc{ font-size:13.5px; font-weight:700; }
+  .tx-meta{ font-size:11px; color:var(--ink-soft); margin-top:2px; }
+  .tx-amount{ font-size:14px; font-weight:800; }
+
+  .list-header{ padding:16px 18px 6px; font-size:13px; font-weight:700; color:var(--ink-soft); }
+
+  .bottomnav{ position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:480px; background:#fff; border-top:1px solid var(--line); display:flex; z-index:30; padding:8px 0 max(8px, env(safe-area-inset-bottom)); }
+  .nav-item{ flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; cursor:pointer; color:var(--ink-soft); }
+  .nav-item .ic{ font-size:19px; }
+  .nav-item .lb{ font-size:10.5px; font-weight:600; }
+  .nav-item.active{ color:var(--navy); }
+
+  .overlay{ position:fixed; inset:0; background:rgba(20,24,32,0.42); display:none; align-items:flex-end; justify-content:center; z-index:50; }
+  .overlay.show{ display:flex; }
+  .sheet{ background:var(--bg); width:100%; max-width:480px; border-radius:20px 20px 0 0; max-height:90vh; display:flex; flex-direction:column; overflow:hidden; }
+  .sheet-head{ display:flex; align-items:center; justify-content:space-between; padding:14px 18px 10px; flex:0 0 auto; }
+  .sheet-head .cancel{ color:var(--ink-soft); background:none; border:none; font-size:14px; }
+  .sheet-head .save{ color:var(--navy); background:none; border:none; font-size:14px; font-weight:800; }
+  .sheet-head .title{ font-size:15px; font-weight:800; }
+  .sheet-body{ flex:1 1 auto; overflow-y:auto; padding:0 18px 10px; -webkit-overflow-scrolling:touch; }
+  .sheet-footer{ flex:0 0 auto; padding:10px 18px calc(10px + env(safe-area-inset-bottom)); border-top:1px solid var(--line); background:var(--bg); }
+  .field{ margin-bottom:11px; }
+  .field label{ font-size:12px; color:var(--ink-soft); font-weight:700; display:block; margin-bottom:5px; }
+  .field input, .field select, .field textarea{ width:100%; border:1px solid var(--line); background:#fff; border-radius:12px; padding:10px 12px; font-size:16px; font-family:inherit; color:var(--ink); }
+  .field textarea{ resize:vertical; min-height:44px; }
+  .row2{ display:flex; }
+  .row2 .field{ flex:1; min-width:0; }
+  .row2 .field:not(:last-child){ margin-right:10px; }
+  .row2 .field input{ width:100%; min-width:0; box-sizing:border-box; }
+  .type-grid{ display:flex; flex-wrap:wrap; gap:8px; }
+  .type-opt{ flex:0 0 70px; text-align:center; padding:8px 4px; border-radius:12px; border:1.5px solid var(--line); background:#fff; cursor:pointer; font-size:11.5px; }
+  .type-opt.sel{ border-color:var(--navy); background:#EDF0F6; font-weight:700; }
+  .type-opt .e{ font-size:17px; display:block; margin-bottom:3px; }
+  .type-opt.manage{ border-style:dashed; color:var(--ink-soft); }
+
+  .img-upload{ display:flex; align-items:center; gap:12px; }
+  .img-upload .thumb{ width:52px; height:52px; border-radius:12px; background:#fff; border:1.5px dashed var(--line); display:flex; align-items:center; justify-content:center; overflow:hidden; font-size:18px; color:var(--ink-soft); flex:0 0 52px; cursor:pointer; }
+  .img-upload .thumb img{ width:100%; height:100%; object-fit:cover; }
+  .img-upload .remove-img{ font-size:12px; color:#B24A3B; background:none; border:none; cursor:pointer; }
+
+  .cat-row{ display:flex; align-items:center; gap:10px; background:var(--card); border-radius:12px; padding:10px 12px; margin-bottom:8px; }
+  .cat-row .swatch{ width:30px; height:30px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:15px; flex:0 0 30px; }
+  .cat-row .name{ flex:1; font-size:13.5px; font-weight:600; }
+  .cat-row .mini-btn{ width:26px; height:26px; border-radius:7px; border:none; background:#EEF1F5; font-size:12px; cursor:pointer; }
+
+  .emoji-grid, .color-grid{ display:flex; flex-wrap:wrap; gap:8px; }
+  .emoji-opt{ width:36px; height:36px; border-radius:9px; border:1.5px solid var(--line); background:#fff; font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .emoji-opt.sel{ border-color:var(--navy); background:#EDF0F6; }
+  .color-opt{ width:30px; height:30px; border-radius:50%; cursor:pointer; border:2px solid transparent; }
+  .color-opt.sel{ border-color:var(--ink); }
+
+  .primary-btn{ width:100%; background:var(--navy); color:#fff; border:none; border-radius:12px; padding:12px; font-weight:700; font-size:14px; cursor:pointer; }
+
+  h1,h2,h3,p{ margin:0; }
+  .toast{ position:fixed; bottom:100px; left:50%; transform:translateX(-50%) translateY(20px); background:#22283A; color:#fff; padding:10px 18px; border-radius:20px; font-size:12.5px; opacity:0; transition:all 0.25s ease; z-index:100; pointer-events:none; max-width:80%; text-align:center; }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="page-itinerary" class="page">
+    <div class="topbar">
+      <div><h1>日本行程 🗾</h1><div class="sub" id="itin-sub">12 月 29 日 – 1 月 9 日</div></div>
+      <button class="icon-btn" id="refresh-btn" onclick="manualRefresh()" style="width:34px;height:34px;font-size:15px;">🔄</button>
+    </div>
+    <div class="day-tabs" id="day-tabs"></div>
+    <div class="day-title" id="day-title"></div>
+    <div class="timeline" id="timeline"></div>
+  </div>
+
+  <div id="page-tobuy" class="page" style="display:none;">
+    <div class="section-header"><h1>購物清單</h1><button class="add-link" onclick="openBuyModal()">+ 新增項目</button></div>
+    <div class="tabs-row" id="buy-tabs"></div>
+    <div class="tabs-row" id="buy-location-tabs"></div>
+    <div id="buy-list"></div>
+  </div>
+
+  <div id="page-expenses" class="page" style="display:none;">
+    <div class="section-header"><h1>支出總覽</h1><button class="add-link" onclick="openExpenseModal()">+ 新增支出</button></div>
+    <div class="summary-card">
+      <div class="summary-top">
+        <div class="summary-total"><div class="lbl">總支出</div><div class="val" id="exp-total">¥0</div></div>
+        <div class="summary-avg"><div class="lbl">每日平均</div><div class="val" id="exp-avg">¥0</div></div>
+      </div>
+      <div class="bars" id="exp-bars"></div>
+    </div>
+    <div class="list-header">交易紀錄</div>
+    <div id="exp-list"></div>
+  </div>
+
+  <div class="fab" id="itin-fab" onclick="openItemModal()">+</div>
+
+  <div class="bottomnav">
+    <div class="nav-item active" data-page="itinerary" onclick="switchPage('itinerary')"><div class="ic">🗓️</div><div class="lb">行程</div></div>
+    <div class="nav-item" data-page="tobuy" onclick="switchPage('tobuy')"><div class="ic">🛍️</div><div class="lb">購物清單</div></div>
+    <div class="nav-item" data-page="expenses" onclick="switchPage('expenses')"><div class="ic">💰</div><div class="lb">支出</div></div>
+  </div>
+</div>
+
+<!-- ITEM MODAL -->
+<div class="overlay" id="item-overlay">
+  <div class="sheet">
+    <div class="sheet-head">
+      <button class="cancel" onclick="closeModal('item-overlay')">取消</button>
+      <div class="title">行程項目</div>
+      <div style="width:34px;"></div>
+    </div>
+    <div class="sheet-body">
+      <div class="field">
+        <label>照片 (選填)</label>
+        <div class="img-upload">
+          <div class="thumb" id="img-thumb" onclick="document.getElementById('f-image').click()">＋</div>
+          <input type="file" accept="image/*" id="f-image" style="display:none;" onchange="handleImageUpload(event)">
+          <button class="remove-img" id="img-remove" style="display:none;" onclick="removeImage()">移除照片</button>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>開始時間</label><input type="time" id="f-time"></div>
+        <div class="field"><label>結束時間 (選填)</label><input type="time" id="f-endtime"></div>
+      </div>
+      <div class="field"><label>類型</label><div class="type-grid" id="item-type-grid"></div></div>
+      <div class="field"><label>標題</label><input type="text" id="f-title" placeholder="景點 / 餐廳名稱"></div>
+      <div class="field"><label>地圖代碼 (選填)</label><input type="text" id="f-mapcode" placeholder="例如 123-456 789*01"></div>
+      <div class="field"><label>Google Map 連結 (選填)</label><input type="text" id="f-maplink" placeholder="例如 https://maps.app.goo.gl/xxxx"></div>
+      <div class="field"><label>描述</label><textarea id="f-desc" placeholder="簡短描述這個行程..."></textarea></div>
+    </div>
+    <div class="sheet-footer"><button class="primary-btn" id="item-save-btn" onclick="saveItem()">儲存</button></div>
+  </div>
+</div>
+
+<!-- BUY ITEM MODAL -->
+<div class="overlay" id="buy-overlay">
+  <div class="sheet">
+    <div class="sheet-head">
+      <button class="cancel" onclick="closeModal('buy-overlay')">取消</button>
+      <div class="title" id="buy-modal-title">新增購買項目</div>
+      <div style="width:34px;"></div>
+    </div>
+    <div class="sheet-body">
+      <div class="field">
+        <label>照片 (選填)</label>
+        <div class="img-upload">
+          <div class="thumb" id="buy-img-thumb" onclick="document.getElementById('b-image').click()">＋</div>
+          <input type="file" accept="image/*" id="b-image" style="display:none;" onchange="handleBuyImageUpload(event)">
+          <button class="remove-img" id="buy-img-remove" style="display:none;" onclick="removeBuyImage()">移除照片</button>
+        </div>
+      </div>
+      <div class="field"><label>品項名稱</label><input type="text" id="b-name" placeholder="例如 白色戀人"></div>
+      <div class="field"><label>哪裡買 (選填)</label><input type="text" id="b-location" placeholder="例如 唐吉訶德 / 新千歲機場"></div>
+      <div class="field"><label>分類</label><div class="type-grid" id="buy-cat-grid"></div></div>
+    </div>
+    <div class="sheet-footer"><button class="primary-btn" onclick="saveBuyItem()">儲存</button></div>
+  </div>
+</div>
+
+<!-- EXPENSE MODAL -->
+<div class="overlay" id="exp-overlay">
+  <div class="sheet">
+    <div class="sheet-head">
+      <button class="cancel" onclick="closeModal('exp-overlay')">取消</button>
+      <div class="title">新增支出</div>
+      <div style="width:34px;"></div>
+    </div>
+    <div class="sheet-body">
+      <div class="row2">
+        <div class="field"><label>金額 (¥)</label><input type="number" id="e-amount" placeholder="0"></div>
+        <div class="field"><label>日期</label><input type="date" id="e-date"></div>
+      </div>
+      <div class="field"><label>說明</label><input type="text" id="e-desc" placeholder="例如 午餐 - 一蘭拉麵"></div>
+      <div class="field"><label>分類</label><div class="type-grid" id="exp-cat-grid"></div></div>
+      <div class="field">
+        <label>付款方式</label>
+        <select id="e-payment">
+          <option value="cash">現金</option>
+          <option value="credit">信用卡</option>
+          <option value="ic">交通卡 / IC</option>
+        </select>
+      </div>
+    </div>
+    <div class="sheet-footer"><button class="primary-btn" onclick="saveExpense()">儲存</button></div>
+  </div>
+</div>
+
+<!-- CATEGORY MANAGER MODAL -->
+<div class="overlay" id="cat-overlay">
+  <div class="sheet">
+    <div class="sheet-head">
+      <button class="cancel" onclick="closeCatManager()">關閉</button>
+      <div class="title" id="cat-modal-title">管理分類</div>
+      <div style="width:36px;"></div>
+    </div>
+    <div class="sheet-body">
+      <div id="cat-list"></div>
+      <div style="margin-top:10px; border-top:1px solid var(--line); padding-top:14px;">
+        <div class="field"><label id="cat-form-label">新增分類</label><input type="text" id="cat-name" placeholder="輸入分類名稱"></div>
+        <div class="field"><label>圖示</label><div class="emoji-grid" id="cat-emoji-grid"></div></div>
+        <div class="field"><label>顏色</label><div class="color-grid" id="cat-color-grid"></div></div>
+      </div>
+    </div>
+    <div class="sheet-footer"><button class="primary-btn" id="cat-save-btn" onclick="saveCategory()">新增分類</button></div>
+  </div>
+</div>
+
+<script>
+/* ---------- date range ---------- */
+const TRIP_START = new Date(2024,11,29);
+const TRIP_END = new Date(2025,0,9);
+const DOW = ['日','一','二','三','四','五','六'];
+function fmtKey(d){ return d.toISOString().slice(0,10); }
+function buildDays(){ const days=[]; let cur=new Date(TRIP_START); while(cur<=TRIP_END){ days.push(new Date(cur)); cur.setDate(cur.getDate()+1); } return days; }
+const TRIP_DAYS = buildDays();
+let currentDayKey = fmtKey(TRIP_DAYS[0]);
+
+/* ---------- category defaults ---------- */
+const DEFAULTS = {
+  itin: { attraction:{label:'景點',icon:'📍',color:'#4A6FA5'}, food:{label:'用餐',icon:'🍽️',color:'#D9694F'}, dessert:{label:'甜點',icon:'🍰',color:'#8A6BB8'}, shop:{label:'購物',icon:'🛍️',color:'#5B9279'} },
+  buy: { essentials:{label:'必買品',icon:'⭐',color:'#C99A3A'}, pharmacy:{label:'藥妝',icon:'💊',color:'#D9694F'}, snacks:{label:'零食',icon:'🍪',color:'#5B9279'}, souvenir:{label:'紀念品',icon:'🎁',color:'#8A6BB8'} },
+  exp: { transport:{label:'交通',icon:'🚆',color:'#C99A3A'}, food:{label:'食物',icon:'🍽️',color:'#D9694F'}, attraction:{label:'景點',icon:'🎫',color:'#4A6FA5'}, shopping:{label:'購物',icon:'🛍️',color:'#8A6BB8'}, other:{label:'其他',icon:'💳',color:'#9CA3AF'} }
+};
+const EMOJI_LIST = ['📍','🍽️','🍰','🛍️','🚆','🎫','💳','⛩️','🌸','🎡','☕','🍜','🏯','🚕','💊','🎁','⭐','🍪','🧴','🎧'];
+const COLOR_SWATCH = ['#4A6FA5','#D9694F','#8A6BB8','#5B9279','#C99A3A','#3B4A68','#9CA3AF','#B24A3B'];
+
+let CAT = { itin:{}, buy:{}, exp:{} };
+let itinerary = {}, buyList = [], expenses = [];
+let editingItemId = null, editingDayKey = null, currentItemType = 'attraction', tempImageData = null, tempImageChanged = false;
+let currentBuyTab = 'all', selectedBuyCat = 'essentials', selectedExpCat = 'food';
+let editingBuyId = null, tempBuyImageData = null, tempBuyImageChanged = false, currentLocationFilter = 'all';
+let catManagerKind = null, editingCatId = null, catFormEmoji = EMOJI_LIST[0], catFormColor = COLOR_SWATCH[0];
+
+/* ---------- storage (GitHub Gist backend) ----------
+   SETUP REQUIRED before this app will work:
+   1. Create a new GitHub Gist (can be "secret") at https://gist.github.com
+      with 6 files, each containing just: {}
+        itin-types.json   buy-categories.json   exp-categories.json
+        itinerary.json    buy-list.json         expenses.json
+   2. Copy the Gist ID from its URL (the string after the last slash).
+   3. Create a Personal Access Token at https://github.com/settings/tokens
+      -> "Generate new token (classic)" -> check ONLY the "gist" scope.
+   4. Paste both values below. Do not share this file publicly with the
+      token still inside it, since anyone with the token can edit the gist. */
+const GIST_ID = '8c6daca30e07dcbc151ef0c18f494066';
+const GITHUB_TOKEN = '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';
+const GIST_API = `https://api.github.com/gists/${GIST_ID}`;
+const GH_HEADERS = { 'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github+json' };
+
+let latestGist = null;
+async function fetchGist(){
+  const res = await fetch(GIST_API, { headers: GH_HEADERS });
+  if(!res.ok) throw new Error('Gist fetch failed: '+res.status);
+  return res.json();
+}
+function parseFile(gist, name, fallback){
+  try{ const f = gist.files[name]; return f ? JSON.parse(f.content) : fallback; }
+  catch(e){ return fallback; }
+}
+async function saveKey(name, obj, retries=1){
+  for(let attempt=0; attempt<=retries; attempt++){
+    try{
+      const res = await fetch(GIST_API, {
+        method: 'PATCH',
+        headers: { ...GH_HEADERS, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ files: { [name]: { content: JSON.stringify(obj) } } })
+      });
+      if(!res.ok) throw new Error('Gist save failed: '+res.status);
+      return true;
+    }catch(e){
+      console.error('saveKey failed', name, e);
+      if(attempt===retries) return false;
+      await new Promise(r=>setTimeout(r, 500));
+    }
+  }
+  return false;
+}
+let toastTimer = null;
+function showToast(msg){
+  const el = document.getElementById('toast'); if(!el) return;
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=> el.classList.remove('show'), 2600);
+}
+
+/* Images are stored as their own files inside the same gist (not embedded
+   in itinerary/buy-list) so that checking a box, editing a title, etc.
+   doesn't have to re-send every photo every time. */
+let imageCache = {};
+function loadImageCacheFromGist(gist){
+  Object.keys(gist.files||{}).forEach(name=>{
+    if(name.startsWith('img-')){
+      imageCache[name] = gist.files[name].content;
+    }
+  });
+}
+function newImageRef(prefix){ return `img-${prefix}-${Date.now()}-${Math.random().toString(36).slice(2,7)}`; }
+async function saveImage(ref, dataUrl, retries=1){
+  for(let attempt=0; attempt<=retries; attempt++){
+    try{
+      const res = await fetch(GIST_API, {
+        method: 'PATCH',
+        headers: { ...GH_HEADERS, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ files: { [ref]: { content: dataUrl } } })
+      });
+      if(!res.ok) throw new Error('Image save failed: '+res.status);
+      imageCache[ref] = dataUrl;
+      return true;
+    }catch(e){ console.error('saveImage failed', ref, e); if(attempt===retries) return false; await new Promise(r=>setTimeout(r,500)); }
+  }
+  return false;
+}
+function deleteImageBestEffort(ref){
+  if(!ref) return;
+  delete imageCache[ref];
+  fetch(GIST_API, {
+    method: 'PATCH',
+    headers: { ...GH_HEADERS, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ files: { [ref]: null } })
+  }).catch(()=>{ /* non-critical, ignore */ });
+}
+
+async function loadAll(){
+  let gist;
+  try{ gist = await fetchGist(); }
+  catch(e){ showToast('無法讀取資料，請確認 GIST_ID 與 GITHUB_TOKEN 設定正確'); gist = { files: {} }; }
+  latestGist = gist;
+  CAT.itin = parseFile(gist, 'itin-types.json', {...DEFAULTS.itin});
+  CAT.buy = parseFile(gist, 'buy-categories.json', {...DEFAULTS.buy});
+  CAT.exp = parseFile(gist, 'exp-categories.json', {...DEFAULTS.exp});
+  itinerary = parseFile(gist, 'itinerary.json', {});
+  buyList = parseFile(gist, 'buy-list.json', []);
+  expenses = parseFile(gist, 'expenses.json', []);
+  loadImageCacheFromGist(gist);
+}
+function saveItinerary(){ return saveKey('itinerary.json', itinerary); }
+function saveBuyList(){ return saveKey('buy-list.json', buyList); }
+function saveExpenses(){ return saveKey('expenses.json', expenses); }
+function saveCatKind(kind){ const map={itin:'itin-types.json',buy:'buy-categories.json',exp:'exp-categories.json'}; return saveKey(map[kind], CAT[kind]); }
+
+
+function getCat(kind, id){ return CAT[kind][id] || {label:'其他', icon:'❔', color:'#9CA3AF'}; }
+
+/* ---------- nav ---------- */
+function switchPage(page){
+  document.querySelectorAll('.page').forEach(p=>p.style.display='none');
+  document.getElementById('page-'+page).style.display='block';
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active', n.dataset.page===page));
+  document.getElementById('itin-fab').style.display = page==='itinerary' ? 'flex' : 'none';
+}
+
+/* ---------- ITINERARY ---------- */
+function renderDayTabs(){
+  const wrap = document.getElementById('day-tabs'); wrap.innerHTML = '';
+  TRIP_DAYS.forEach(d=>{
+    const key = fmtKey(d);
+    const el = document.createElement('div');
+    el.className = 'day-tab' + (key===currentDayKey?' active':'') + ((itinerary[key]&&itinerary[key].length)?' has-items':'');
+    el.innerHTML = `<div class="dow">${DOW[d.getDay()]}</div><div class="num">${d.getDate()}</div><div class="dot"></div>`;
+    el.onclick = ()=>{ currentDayKey = key; renderDayTabs(); renderTimeline(); };
+    wrap.appendChild(el);
+  });
+  const active = wrap.querySelector('.day-tab.active');
+  if(active) active.scrollIntoView({inline:'center', block:'nearest'});
+}
+function renderTimeline(){
+  const d = TRIP_DAYS.find(d=>fmtKey(d)===currentDayKey);
+  document.getElementById('day-title').textContent = `${d.getMonth()+1} 月 ${d.getDate()} 日 · 週${DOW[d.getDay()]}`;
+  const items = (itinerary[currentDayKey]||[]).slice().sort((a,b)=> (a.time||'').localeCompare(b.time||''));
+  const wrap = document.getElementById('timeline'); wrap.innerHTML = '';
+  if(items.length===0){ wrap.innerHTML = `<div class="empty-state"><div class="em">🧳</div><div class="t">這天還沒有安排行程<br>點右下角「＋」新增</div></div>`; return; }
+  items.forEach((it, idx)=>{
+    const meta = getCat('itin', it.type);
+    const media = it.imageRef && imageCache[it.imageRef] ? `<img src="${imageCache[it.imageRef]}" alt="">` : '';
+    const timeLabel = it.time ? (it.endTime ? `${it.time} - ${it.endTime}` : it.time) : '--:--';
+    const durationText = formatDuration(it.time, it.endTime);
+    const row = document.createElement('div');
+    row.className = 'item-row';
+    row.innerHTML = `
+      <div class="item-rail">${idx<items.length-1?'<div class="line"></div>':''}</div>
+      <div class="card">
+        ${it.maplink?`<button class="map-pin" onclick="openMap('${encodeURIComponent(it.maplink)}')">📍</button>`:''}
+        <div class="item-time">${timeLabel}</div>
+        <div class="item-main">
+          <div class="item-media" style="background:${meta.color}22;color:${meta.color}">${media}</div>
+          <div class="item-body">
+            <div class="item-title">${escapeHtml(it.title||'未命名')}</div>
+            ${it.desc?`<div class="item-desc">${escapeHtml(it.desc)}</div>`:''}
+            <div class="item-meta">
+              ${durationText?`<span class="duration-pill">⏱ ${durationText}</span>`:''}
+              ${it.mapcode?`<span class="duration-pill">🗺 ${escapeHtml(it.mapcode)}</span>`:''}
+              <div class="item-actions">
+                <button class="icon-btn edit" onclick="editItem('${it.id}')">✎</button>
+                <button class="icon-btn del" onclick="deleteItem('${it.id}')">🗑</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    if(!(it.imageRef && imageCache[it.imageRef])){ row.querySelector('.item-media').textContent = meta.icon; }
+    wrap.appendChild(row);
+  });
+}
+function formatDuration(start, end){
+  if(!start || !end) return '';
+  const [sh,sm] = start.split(':').map(Number);
+  const [eh,em] = end.split(':').map(Number);
+  if(isNaN(sh)||isNaN(eh)) return '';
+  let mins = (eh*60+em) - (sh*60+sm);
+  if(mins<0) mins += 24*60;
+  if(mins<=0) return '';
+  const h = Math.floor(mins/60), m = mins%60;
+  if(h>0 && m>0) return `${h}hr ${m}min`;
+  if(h>0) return `${h}hr`;
+  return `${m}min`;
+}
+function openMap(linkEnc){ window.open(decodeURIComponent(linkEnc), '_blank'); }
+
+function renderItemTypeGrid(){
+  const wrap = document.getElementById('item-type-grid'); wrap.innerHTML = '';
+  Object.entries(CAT.itin).forEach(([id,c])=>{
+    const el = document.createElement('div');
+    el.className = 'type-opt' + (currentItemType===id?' sel':'');
+    el.innerHTML = `<span class="e">${c.icon}</span>${c.label}`;
+    el.onclick = ()=>{ currentItemType = id; renderItemTypeGrid(); };
+    wrap.appendChild(el);
+  });
+  const manage = document.createElement('div');
+  manage.className = 'type-opt manage';
+  manage.innerHTML = `<span class="e">⚙️</span>管理`;
+  manage.onclick = ()=> openCatManager('itin');
+  wrap.appendChild(manage);
+}
+function openItemModal(){
+  editingItemId = null; editingDayKey = currentDayKey; currentItemType = Object.keys(CAT.itin)[0]||'attraction'; tempImageData = null; tempImageChanged = false;
+  document.getElementById('f-time').value=''; document.getElementById('f-endtime').value='';
+  document.getElementById('f-title').value=''; document.getElementById('f-mapcode').value=''; document.getElementById('f-maplink').value=''; document.getElementById('f-desc').value='';
+  resetImageThumb();
+  renderItemTypeGrid();
+  document.getElementById('item-overlay').classList.add('show');
+}
+function editItem(id){
+  const list = itinerary[currentDayKey]||[]; const it = list.find(x=>x.id===id); if(!it) return;
+  editingItemId = id; editingDayKey = currentDayKey; currentItemType = it.type||'attraction';
+  tempImageData = (it.imageRef && imageCache[it.imageRef]) || null; tempImageChanged = false;
+  document.getElementById('f-time').value = it.time||''; document.getElementById('f-endtime').value = it.endTime||'';
+  document.getElementById('f-title').value = it.title||''; document.getElementById('f-mapcode').value = it.mapcode||''; document.getElementById('f-maplink').value = it.maplink||''; document.getElementById('f-desc').value = it.desc||'';
+  resetImageThumb();
+  renderItemTypeGrid();
+  document.getElementById('item-overlay').classList.add('show');
+}
+let isSavingItem = false;
+async function saveItem(){
+  if(isSavingItem) return; isSavingItem = true;
+  const btn = document.getElementById('item-save-btn'); if(btn) btn.disabled = true;
+  try{
+    const title = document.getElementById('f-title').value.trim();
+    if(!title){ alert('請輸入標題'); return; }
+    const existing = editingItemId ? (itinerary[editingDayKey]||[]).find(x=>x.id===editingItemId) : null;
+    const oldImageRef = existing ? existing.imageRef : null;
+    let imageRef = oldImageRef;
+    if(tempImageChanged){
+      if(tempImageData){
+        const newRef = newImageRef('i');
+        const imgOk = await saveImage(newRef, tempImageData);
+        if(!imgOk){ showToast('圖片儲存失敗，請重試'); return; }
+        imageRef = newRef;
+        if(oldImageRef) deleteImageBestEffort(oldImageRef);
+      } else {
+        imageRef = null;
+        if(oldImageRef) deleteImageBestEffort(oldImageRef);
+      }
+    }
+    const data = { time: document.getElementById('f-time').value, endTime: document.getElementById('f-endtime').value, type: currentItemType, title, mapcode: document.getElementById('f-mapcode').value.trim(), maplink: document.getElementById('f-maplink').value.trim(), desc: document.getElementById('f-desc').value.trim(), imageRef };
+    if(!itinerary[editingDayKey]) itinerary[editingDayKey] = [];
+    let addedNew = false, targetIdx = -1, previousSnapshot = null;
+    if(editingItemId){
+      targetIdx = itinerary[editingDayKey].findIndex(x=>x.id===editingItemId);
+      if(targetIdx>-1){ previousSnapshot = {...itinerary[editingDayKey][targetIdx]}; itinerary[editingDayKey][targetIdx] = {...itinerary[editingDayKey][targetIdx], ...data}; }
+    } else {
+      itinerary[editingDayKey].push({ id:'i'+Date.now(), ...data });
+      addedNew = true;
+    }
+    const ok = await saveItinerary();
+    if(ok){ closeModal('item-overlay'); renderDayTabs(); renderTimeline(); }
+    else{
+      if(addedNew){ itinerary[editingDayKey].pop(); }
+      else if(targetIdx>-1 && previousSnapshot){ itinerary[editingDayKey][targetIdx] = previousSnapshot; }
+      showToast('儲存失敗，請重試一次');
+    }
+  } finally { isSavingItem = false; if(btn) btn.disabled = false; }
+}
+async function deleteItem(id){
+  const dayItems = itinerary[currentDayKey]||[];
+  const removed = dayItems.find(x=>x.id===id);
+  itinerary[currentDayKey] = dayItems.filter(x=>x.id!==id);
+  const ok = await saveItinerary();
+  if(!ok && removed){ itinerary[currentDayKey].push(removed); showToast('刪除失敗，請重試一次'); }
+  else if(ok && removed && removed.imageRef){ deleteImageBestEffort(removed.imageRef); }
+  renderDayTabs(); renderTimeline();
+}
+
+/* ---------- image upload (shared helper) ---------- */
+function resizeImageFile(file, maxDim=640, quality=0.72){
+  return new Promise((resolve)=>{
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      const img = new Image();
+      img.onload = ()=>{
+        let w = img.width, h = img.height;
+        if(w>h && w>maxDim){ h = Math.round(h*maxDim/w); w = maxDim; }
+        else if(h>maxDim){ w = Math.round(w*maxDim/h); h = maxDim; }
+        const canvas = document.createElement('canvas'); canvas.width=w; canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+function resetImageThumb(){
+  const thumb = document.getElementById('img-thumb'); const removeBtn = document.getElementById('img-remove');
+  if(tempImageData){ thumb.innerHTML = `<img src="${tempImageData}">`; removeBtn.style.display='inline-block'; }
+  else { thumb.innerHTML = '＋'; removeBtn.style.display='none'; }
+}
+async function handleImageUpload(evt){
+  const file = evt.target.files[0]; if(!file) return;
+  tempImageData = await resizeImageFile(file);
+  tempImageChanged = true;
+  resetImageThumb();
+}
+function removeImage(){ tempImageData = null; tempImageChanged = true; document.getElementById('f-image').value=''; resetImageThumb(); }
+
+function resetBuyImageThumb(){
+  const thumb = document.getElementById('buy-img-thumb'); const removeBtn = document.getElementById('buy-img-remove');
+  if(tempBuyImageData){ thumb.innerHTML = `<img src="${tempBuyImageData}">`; removeBtn.style.display='inline-block'; }
+  else { thumb.innerHTML = '＋'; removeBtn.style.display='none'; }
+}
+async function handleBuyImageUpload(evt){
+  const file = evt.target.files[0]; if(!file) return;
+  tempBuyImageData = await resizeImageFile(file);
+  tempBuyImageChanged = true;
+  resetBuyImageThumb();
+}
+function removeBuyImage(){ tempBuyImageData = null; tempBuyImageChanged = true; document.getElementById('b-image').value=''; resetBuyImageThumb(); }
+
+/* ---------- TO-BUY ---------- */
+function getBuyLocations(){
+  const set = new Set();
+  buyList.forEach(b=>{ if(b.location && b.location.trim()) set.add(b.location.trim()); });
+  return Array.from(set).sort();
+}
+function renderBuyTabs(){
+  const wrap = document.getElementById('buy-tabs');
+  const counts = {all: buyList.length};
+  Object.keys(CAT.buy).forEach(k=>counts[k]=buyList.filter(b=>b.category===k).length);
+  let html = `<div class="chip ${currentBuyTab==='all'?'active':''}" onclick="setBuyTab('all')">全部 (${counts.all})</div>`;
+  html += Object.entries(CAT.buy).map(([k,c])=>`<div class="chip ${currentBuyTab===k?'active':''}" onclick="setBuyTab('${k}')">${c.icon} ${c.label} (${counts[k]||0})</div>`).join('');
+  html += `<div class="chip manage" onclick="openCatManager('buy')">⚙️ 管理分類</div>`;
+  wrap.innerHTML = html;
+}
+function renderBuyLocationTabs(){
+  const wrap = document.getElementById('buy-location-tabs');
+  const locations = getBuyLocations();
+  if(locations.length===0){ wrap.innerHTML = ''; wrap.style.display='none'; return; }
+  wrap.style.display = 'flex';
+  let html = `<div class="chip ${currentLocationFilter==='all'?'active':''}" onclick="setLocationFilter('all')">📍 全部地點</div>`;
+  html += locations.map(loc=>`<div class="chip ${currentLocationFilter===loc?'active':''}" onclick="setLocationFilter('${escapeHtml(loc).replace(/'/g,"\\'")}')">${escapeHtml(loc)}</div>`).join('');
+  wrap.innerHTML = html;
+}
+function setBuyTab(k){ currentBuyTab = k; renderBuyTabs(); renderBuyList(); }
+function setLocationFilter(loc){ currentLocationFilter = loc; renderBuyLocationTabs(); renderBuyList(); }
+function renderBuyList(){
+  const wrap = document.getElementById('buy-list');
+  const groups = currentBuyTab==='all' ? Object.keys(CAT.buy) : [currentBuyTab];
+  let html = '', any = false;
+  groups.forEach(catKey=>{
+    let items = buyList.filter(b=>b.category===catKey);
+    if(currentLocationFilter!=='all') items = items.filter(b=>(b.location||'').trim()===currentLocationFilter);
+    if(items.length===0) return; any = true;
+    const cat = getCat('buy', catKey);
+    html += `<div class="cat-group"><div class="cat-group-head"><span class="cat-dot" style="background:${cat.color}"></span>${cat.icon} ${cat.label} (${items.length})</div>`;
+    items.forEach(it=>{
+      const media = (it.imageRef && imageCache[it.imageRef]) ? `<img src="${imageCache[it.imageRef]}">` : cat.icon;
+      html += `<div class="buy-item">
+        <div class="checkbox ${it.checked?'checked':''}" onclick="toggleBuy('${it.id}')">${it.checked?'✓':''}</div>
+        <div class="buy-media" style="background:${cat.color}22;color:${cat.color}">${media}</div>
+        <div class="buy-body">
+          <div class="buy-name ${it.checked?'done':''}">${escapeHtml(it.name)}</div>
+          ${it.location?`<div class="buy-location">📍 ${escapeHtml(it.location)}</div>`:''}
+        </div>
+        <button class="icon-btn edit" onclick="editBuyItem('${it.id}')">✎</button>
+        <button class="icon-btn del" onclick="deleteBuy('${it.id}')">🗑</button>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+  wrap.innerHTML = any ? html : `<div class="empty-state"><div class="em">🛍️</div><div class="t">還沒有項目<br>點右上角新增</div></div>`;
+}
+function renderBuyCatGrid(){
+  const wrap = document.getElementById('buy-cat-grid'); wrap.innerHTML = '';
+  Object.entries(CAT.buy).forEach(([id,c])=>{
+    const el = document.createElement('div'); el.className = 'type-opt'+(selectedBuyCat===id?' sel':'');
+    el.innerHTML = `<span class="e">${c.icon}</span>${c.label}`; el.onclick=()=>{ selectedBuyCat=id; renderBuyCatGrid(); };
+    wrap.appendChild(el);
+  });
+  const manage = document.createElement('div'); manage.className='type-opt manage'; manage.innerHTML=`<span class="e">⚙️</span>管理`;
+  manage.onclick = ()=> openCatManager('buy'); wrap.appendChild(manage);
+}
+function openBuyModal(){
+  editingBuyId = null; tempBuyImageData = null; tempBuyImageChanged = false;
+  document.getElementById('buy-modal-title').textContent = '新增購買項目';
+  document.getElementById('b-name').value=''; document.getElementById('b-location').value='';
+  selectedBuyCat = Object.keys(CAT.buy)[0]||'essentials';
+  resetBuyImageThumb(); renderBuyCatGrid(); document.getElementById('buy-overlay').classList.add('show');
+}
+function editBuyItem(id){
+  const it = buyList.find(x=>x.id===id); if(!it) return;
+  editingBuyId = id; tempBuyImageData = (it.imageRef && imageCache[it.imageRef]) || null; tempBuyImageChanged = false;
+  document.getElementById('buy-modal-title').textContent = '編輯購買項目';
+  document.getElementById('b-name').value = it.name||''; document.getElementById('b-location').value = it.location||'';
+  selectedBuyCat = it.category;
+  resetBuyImageThumb(); renderBuyCatGrid(); document.getElementById('buy-overlay').classList.add('show');
+}
+let isSavingBuy = false;
+async function saveBuyItem(){
+  if(isSavingBuy) return; isSavingBuy = true;
+  try{
+    const name = document.getElementById('b-name').value.trim(); if(!name){ alert('請輸入品項名稱'); return; }
+    const location = document.getElementById('b-location').value.trim();
+    const existing = editingBuyId ? buyList.find(x=>x.id===editingBuyId) : null;
+    const oldImageRef = existing ? existing.imageRef : null;
+    let imageRef = oldImageRef;
+    if(tempBuyImageChanged){
+      if(tempBuyImageData){
+        const newRef = newImageRef('b');
+        const imgOk = await saveImage(newRef, tempBuyImageData);
+        if(!imgOk){ showToast('圖片儲存失敗，請重試'); return; }
+        imageRef = newRef;
+        if(oldImageRef) deleteImageBestEffort(oldImageRef);
+      } else {
+        imageRef = null;
+        if(oldImageRef) deleteImageBestEffort(oldImageRef);
+      }
+    }
+    let addedNew = false, targetIdx = -1, previousSnapshot = null;
+    if(editingBuyId){
+      targetIdx = buyList.findIndex(x=>x.id===editingBuyId);
+      if(targetIdx>-1){ previousSnapshot = {...buyList[targetIdx]}; buyList[targetIdx] = { ...buyList[targetIdx], name, location, category: selectedBuyCat, imageRef }; }
+    } else {
+      buyList.push({ id:'b'+Date.now(), name, location, category: selectedBuyCat, checked:false, imageRef });
+      addedNew = true;
+    }
+    const ok = await saveBuyList();
+    if(ok){ closeModal('buy-overlay'); renderBuyTabs(); renderBuyLocationTabs(); renderBuyList(); }
+    else{
+      if(addedNew){ buyList.pop(); }
+      else if(targetIdx>-1 && previousSnapshot){ buyList[targetIdx] = previousSnapshot; }
+      showToast('儲存失敗，請重試一次');
+    }
+  } finally { isSavingBuy = false; }
+}
+async function toggleBuy(id){ const it = buyList.find(x=>x.id===id); if(!it) return; it.checked = !it.checked; const ok = await saveBuyList(); if(!ok){ it.checked = !it.checked; showToast('更新失敗，請重試'); } renderBuyList(); }
+async function deleteBuy(id){
+  const removed = buyList.find(x=>x.id===id);
+  buyList = buyList.filter(x=>x.id!==id);
+  const ok = await saveBuyList();
+  if(!ok && removed){ buyList.push(removed); showToast('刪除失敗，請重試一次'); }
+  else if(ok && removed && removed.imageRef){ deleteImageBestEffort(removed.imageRef); }
+  renderBuyTabs(); renderBuyLocationTabs(); renderBuyList();
+}
+
+
+/* ---------- EXPENSES ---------- */
+function renderExpenses(){
+  const total = expenses.reduce((s,e)=>s+Number(e.amount||0),0);
+  const numDays = TRIP_DAYS.length;
+  document.getElementById('exp-total').textContent = `¥${total.toLocaleString()}`;
+  document.getElementById('exp-avg').textContent = `¥${Math.round(total/numDays).toLocaleString()}`;
+  const byCat = {}; Object.keys(CAT.exp).forEach(k=>byCat[k]=0);
+  expenses.forEach(e=> byCat[e.category] = (byCat[e.category]||0) + Number(e.amount||0));
+  document.getElementById('exp-bars').innerHTML = Object.entries(CAT.exp).map(([k,c])=>{
+    const amt = byCat[k]||0; const pct = total>0 ? Math.round(amt/total*100) : 0;
+    return `<div class="bar-row"><div class="bar-label">${c.icon} ${c.label}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%; background:${c.color}"></div></div><div class="bar-pct">${pct}%</div></div>`;
+  }).join('');
+  const listWrap = document.getElementById('exp-list');
+  const sorted = expenses.slice().sort((a,b)=> (b.date||'').localeCompare(a.date||''));
+  if(sorted.length===0){ listWrap.innerHTML = `<div class="empty-state"><div class="em">💴</div><div class="t">還沒有支出紀錄<br>點右上角新增</div></div>`; return; }
+  const payLabel = {cash:'現金', credit:'信用卡', ic:'交通卡'};
+  listWrap.innerHTML = sorted.map(e=>{
+    const cat = getCat('exp', e.category);
+    return `<div class="tx-row"><div class="tx-icon" style="background:${cat.color}22; color:${cat.color}">${cat.icon}</div><div class="tx-body"><div class="tx-desc">${escapeHtml(e.desc||cat.label)}</div><div class="tx-meta">${e.date||''} · ${payLabel[e.payment]||''}</div></div><div class="tx-amount">¥${Number(e.amount||0).toLocaleString()}</div><button class="icon-btn del" onclick="deleteExpense('${e.id}')">🗑</button></div>`;
+  }).join('');
+}
+function renderExpCatGrid(){
+  const wrap = document.getElementById('exp-cat-grid'); wrap.innerHTML = '';
+  Object.entries(CAT.exp).forEach(([id,c])=>{
+    const el = document.createElement('div'); el.className='type-opt'+(selectedExpCat===id?' sel':'');
+    el.innerHTML = `<span class="e">${c.icon}</span>${c.label}`; el.onclick=()=>{ selectedExpCat=id; renderExpCatGrid(); };
+    wrap.appendChild(el);
+  });
+  const manage = document.createElement('div'); manage.className='type-opt manage'; manage.innerHTML=`<span class="e">⚙️</span>管理`;
+  manage.onclick = ()=> openCatManager('exp'); wrap.appendChild(manage);
+}
+function openExpenseModal(){
+  document.getElementById('e-amount').value=''; document.getElementById('e-desc').value='';
+  document.getElementById('e-date').value = currentDayKey; document.getElementById('e-payment').value='cash';
+  selectedExpCat = Object.keys(CAT.exp)[0]||'food';
+  renderExpCatGrid(); document.getElementById('exp-overlay').classList.add('show');
+}
+let isSavingExpense = false;
+async function saveExpense(){
+  if(isSavingExpense) return; isSavingExpense = true;
+  try{
+    const amount = Number(document.getElementById('e-amount').value); if(!amount || amount<=0){ alert('請輸入有效金額'); return; }
+    expenses.push({ id:'e'+Date.now(), amount, desc: document.getElementById('e-desc').value.trim(), category: selectedExpCat, date: document.getElementById('e-date').value || currentDayKey, payment: document.getElementById('e-payment').value });
+    const ok = await saveExpenses();
+    if(ok){ closeModal('exp-overlay'); renderExpenses(); }
+    else{ expenses.pop(); showToast('儲存失敗，請重試一次'); }
+  } finally { isSavingExpense = false; }
+}
+async function deleteExpense(id){
+  const removed = expenses.find(x=>x.id===id);
+  expenses = expenses.filter(x=>x.id!==id);
+  const ok = await saveExpenses();
+  if(!ok && removed){ expenses.push(removed); showToast('刪除失敗，請重試一次'); }
+  renderExpenses();
+}
+
+/* ---------- CATEGORY MANAGER ---------- */
+function openCatManager(kind){
+  catManagerKind = kind; editingCatId = null;
+  const titles = {itin:'管理行程類型', buy:'管理購物分類', exp:'管理支出分類'};
+  document.getElementById('cat-modal-title').textContent = titles[kind];
+  resetCatForm();
+  renderCatList();
+  document.getElementById('cat-overlay').classList.add('show');
+}
+function closeCatManager(){
+  closeModal('cat-overlay');
+  if(catManagerKind==='itin') renderItemTypeGrid();
+  if(catManagerKind==='buy'){ renderBuyTabs(); renderBuyLocationTabs(); renderBuyList(); renderBuyCatGrid(); }
+  if(catManagerKind==='exp'){ renderExpenses(); renderExpCatGrid(); }
+}
+function renderCatList(){
+  const wrap = document.getElementById('cat-list');
+  wrap.innerHTML = Object.entries(CAT[catManagerKind]).map(([id,c])=>`
+    <div class="cat-row">
+      <div class="swatch" style="background:${c.color}22;color:${c.color}">${c.icon}</div>
+      <div class="name">${escapeHtml(c.label)}</div>
+      <button class="mini-btn" onclick="startEditCategory('${id}')">✎</button>
+      <button class="mini-btn" onclick="deleteCategory('${id}')">🗑</button>
+    </div>`).join('');
+}
+function renderEmojiGrid(){
+  document.getElementById('cat-emoji-grid').innerHTML = EMOJI_LIST.map(e=>`<div class="emoji-opt ${catFormEmoji===e?'sel':''}" onclick="pickEmoji('${e}')">${e}</div>`).join('');
+}
+function renderColorGrid(){
+  document.getElementById('cat-color-grid').innerHTML = COLOR_SWATCH.map(c=>`<div class="color-opt ${catFormColor===c?'sel':''}" style="background:${c}" onclick="pickColor('${c}')"></div>`).join('');
+}
+function pickEmoji(e){ catFormEmoji = e; renderEmojiGrid(); }
+function pickColor(c){ catFormColor = c; renderColorGrid(); }
+function resetCatForm(){
+  editingCatId = null; document.getElementById('cat-name').value = '';
+  catFormEmoji = EMOJI_LIST[0]; catFormColor = COLOR_SWATCH[0];
+  document.getElementById('cat-form-label').textContent = '新增分類';
+  document.getElementById('cat-save-btn').textContent = '新增分類';
+  renderEmojiGrid(); renderColorGrid();
+}
+function startEditCategory(id){
+  const c = CAT[catManagerKind][id]; if(!c) return;
+  editingCatId = id; document.getElementById('cat-name').value = c.label;
+  catFormEmoji = c.icon; catFormColor = c.color;
+  document.getElementById('cat-form-label').textContent = '編輯分類';
+  document.getElementById('cat-save-btn').textContent = '儲存變更';
+  renderEmojiGrid(); renderColorGrid();
+}
+async function deleteCategory(id){
+  const keys = Object.keys(CAT[catManagerKind]);
+  if(keys.length<=1){ alert('至少需保留一個分類'); return; }
+  if(!confirm('刪除此分類？使用此分類的項目會顯示為「其他」。')) return;
+  delete CAT[catManagerKind][id];
+  await saveCatKind(catManagerKind);
+  renderCatList();
+  if(editingCatId===id) resetCatForm();
+}
+async function saveCategory(){
+  const name = document.getElementById('cat-name').value.trim();
+  if(!name){ alert('請輸入分類名稱'); return; }
+  const id = editingCatId || (catManagerKind+'_'+Date.now());
+  CAT[catManagerKind][id] = { label:name, icon:catFormEmoji, color:catFormColor };
+  await saveCatKind(catManagerKind);
+  resetCatForm();
+  renderCatList();
+}
+
+/* ---------- utils ---------- */
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+/* ---------- init & refresh ---------- */
+function renderEverything(){
+  renderDayTabs(); renderTimeline();
+  renderBuyTabs(); renderBuyLocationTabs(); renderBuyList();
+  renderExpenses();
+}
+function anyModalOpen(){
+  return document.querySelectorAll('.overlay.show').length > 0;
+}
+let isRefreshing = false;
+async function refreshAll(silent){
+  if(isRefreshing) return;
+  if(anyModalOpen()) return; // don't yank data out from under someone mid-edit
+  isRefreshing = true;
+  const btn = document.getElementById('refresh-btn');
+  if(!silent && btn) btn.textContent = '⏳';
+  try{
+    await loadAll();
+    renderEverything();
+  } finally {
+    isRefreshing = false;
+    if(!silent && btn) btn.textContent = '🔄';
+  }
+}
+function manualRefresh(){ refreshAll(false); }
+
+async function init(){
+  await loadAll();
+  renderEverything();
+  // Keep both people roughly in sync without requiring a manual refresh every time.
+  setInterval(()=> refreshAll(true), 20000);
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) refreshAll(true); });
+  window.addEventListener('focus', ()=> refreshAll(true));
+}
+init();
+</script>
+<div class="toast" id="toast"></div>
+</body>
+</html>
