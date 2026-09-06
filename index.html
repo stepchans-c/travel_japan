@@ -3,19 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>日本行程 Japan Trip</title>
+<title>26/27 東京-近郊-東北 行程</title>
 <style>
   :root{
-    --bg: #EAEEF3;
+    --bg: #E6EBF2;
     --card: #FFFFFF;
-    --ink: #1C2740;
-    --ink-soft: #7E8CA3;
-    --navy: #26344F;
-    --navy-soft: #3B4A68;
-    --line: #D6DDE7;
-    --accent: #4A6FA5;
+    --ink: #1F2E42;
+    --ink-soft: #7B8CA6;
+    --navy: #1F3350;
+    --navy-soft: #2E4A6E;
+    --line: #D2DCE8;
+    --accent: #7C93B3;
     --green: #5B9279;
-    --shadow: 0 2px 10px rgba(28,39,64,0.07);
+    --shadow: 0 2px 10px rgba(31,51,80,0.08);
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
   body{ margin:0; font-family: -apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif; background:var(--bg); color:var(--ink); display:flex; justify-content:center; }
@@ -39,17 +39,20 @@
   .day-title{ padding:2px 18px 14px; font-size:13px; color:var(--ink-soft); font-weight:600; }
 
   .timeline{ padding:0 18px; display:flex; flex-direction:column; }
-  .item-row{ display:flex; gap:12px; }
-  .item-rail{ display:flex; flex-direction:column; align-items:center; width:16px; }
-  .item-rail .line{ width:2px; flex:1; background:var(--line); margin-top:2px; }
+  .item-row{ display:flex; gap:6px; }
+  .item-timecol{ flex:0 0 44px; text-align:right; padding-top:2px; }
+  .item-timecol .t1{ font-size:11.5px; color:var(--ink); font-weight:700; }
+  .item-timecol .t2{ font-size:10px; color:var(--ink-soft); margin-top:1px; }
+  .item-rail{ display:flex; flex-direction:column; align-items:center; width:14px; padding-top:4px; }
+  .item-rail .dot{ width:9px; height:9px; border-radius:50%; background:var(--navy); flex:0 0 9px; }
+  .item-rail .line{ width:2px; flex:1; background:var(--line); margin-top:4px; }
   .card{ background:var(--card); border-radius:16px; box-shadow:var(--shadow); padding:12px 14px; margin-bottom:14px; flex:1; position:relative; }
-  .item-time{ font-size:11px; color:var(--ink-soft); font-weight:700; margin-bottom:6px; }
   .item-main{ display:flex; gap:10px; }
   .item-media{ width:56px; height:56px; border-radius:12px; flex:0 0 56px; overflow:hidden; display:flex; align-items:center; justify-content:center; font-size:20px; }
   .item-media img{ width:100%; height:100%; object-fit:cover; }
   .item-body{ flex:1; min-width:0; padding-right:26px; }
   .item-title{ font-size:14.5px; font-weight:700; }
-  .item-desc{ font-size:12px; color:var(--ink-soft); margin-top:3px; line-height:1.5; }
+  .item-desc{ font-size:12px; color:var(--ink-soft); margin-top:3px; line-height:1.5; white-space:pre-line; }
   .item-meta{ display:flex; align-items:center; gap:6px; margin-top:8px; }
   .duration-pill{ font-size:10.5px; color:var(--ink-soft); background:#EEF1F5; padding:2px 8px; border-radius:20px; }
   .item-actions{ display:flex; gap:8px; margin-left:auto; }
@@ -168,7 +171,7 @@
 
   <div id="page-itinerary" class="page">
     <div class="topbar">
-      <div><h1>日本行程 🗾</h1><div class="sub" id="itin-sub">12 月 29 日 – 1 月 9 日</div></div>
+      <div><h1>26/27 東京-近郊-東北 行程 🗾</h1><div class="sub" id="itin-sub">12 月 29 日 – 1 月 9 日</div></div>
       <button class="icon-btn" id="refresh-btn" onclick="manualRefresh()" style="width:34px;height:34px;font-size:15px;">🔄</button>
     </div>
     <div class="day-tabs" id="day-tabs"></div>
@@ -317,7 +320,13 @@ const DOW = ['日','一','二','三','四','五','六'];
 function fmtKey(d){ return d.toISOString().slice(0,10); }
 function buildDays(){ const days=[]; let cur=new Date(TRIP_START); while(cur<=TRIP_END){ days.push(new Date(cur)); cur.setDate(cur.getDate()+1); } return days; }
 const TRIP_DAYS = buildDays();
-let currentDayKey = fmtKey(TRIP_DAYS[0]);
+let currentDayKey = (function(){
+  try{
+    const saved = localStorage.getItem('lastDayKey');
+    if(saved && TRIP_DAYS.some(d=>fmtKey(d)===saved)) return saved;
+  }catch(e){}
+  return fmtKey(TRIP_DAYS[0]);
+})();
 
 /* ---------- category defaults ---------- */
 const DEFAULTS = {
@@ -435,6 +444,13 @@ async function loadAll(){
   itinerary = parseFile(gist, 'itinerary.json', {});
   buyList = parseFile(gist, 'buy-list.json', []);
   expenses = parseFile(gist, 'expenses.json', []);
+  // Guard against a file accidentally containing the wrong shape (e.g. {} instead of []).
+  if(!Array.isArray(buyList)) buyList = [];
+  if(!Array.isArray(expenses)) expenses = [];
+  if(typeof itinerary !== 'object' || itinerary === null || Array.isArray(itinerary)) itinerary = {};
+  ['itin','buy','exp'].forEach(kind=>{
+    if(typeof CAT[kind] !== 'object' || CAT[kind] === null || Array.isArray(CAT[kind])) CAT[kind] = {...DEFAULTS[kind]};
+  });
   loadImageCacheFromGist(gist);
 }
 function saveItinerary(){ return saveKey('itinerary.json', itinerary); }
@@ -461,7 +477,7 @@ function renderDayTabs(){
     const el = document.createElement('div');
     el.className = 'day-tab' + (key===currentDayKey?' active':'') + ((itinerary[key]&&itinerary[key].length)?' has-items':'');
     el.innerHTML = `<div class="dow">${DOW[d.getDay()]}</div><div class="num">${d.getDate()}</div><div class="dot"></div>`;
-    el.onclick = ()=>{ currentDayKey = key; renderDayTabs(); renderTimeline(); };
+    el.onclick = ()=>{ currentDayKey = key; try{ localStorage.setItem('lastDayKey', key); }catch(e){} renderDayTabs(); renderTimeline(); };
     wrap.appendChild(el);
   });
   const active = wrap.querySelector('.day-tab.active');
@@ -475,18 +491,23 @@ function renderTimeline(){
   if(items.length===0){ wrap.innerHTML = `<div class="empty-state"><div class="em">🧳</div><div class="t">這天還沒有安排行程<br>點右下角「＋」新增</div></div>`; return; }
   items.forEach((it, idx)=>{
     const meta = getCat('itin', it.type);
-    const media = it.imageRef && imageCache[it.imageRef] ? `<img src="${imageCache[it.imageRef]}" alt="">` : '';
-    const timeLabel = it.time ? (it.endTime ? `${it.time} - ${it.endTime}` : it.time) : '--:--';
+    const hasImage = it.imageRef && imageCache[it.imageRef];
     const durationText = formatDuration(it.time, it.endTime);
     const row = document.createElement('div');
     row.className = 'item-row';
     row.innerHTML = `
-      <div class="item-rail">${idx<items.length-1?'<div class="line"></div>':''}</div>
+      <div class="item-timecol">
+        <div class="t1">${it.time||'--:--'}</div>
+        ${it.endTime?`<div class="t2">${it.endTime}</div>`:''}
+      </div>
+      <div class="item-rail">
+        <div class="dot"></div>
+        ${idx<items.length-1?'<div class="line"></div>':''}
+      </div>
       <div class="card">
         ${it.maplink?`<button class="map-pin" onclick="openMap('${encodeURIComponent(it.maplink)}')">📍</button>`:''}
-        <div class="item-time">${timeLabel}</div>
         <div class="item-main">
-          <div class="item-media" style="background:${meta.color}22;color:${meta.color}">${media}</div>
+          ${hasImage?`<div class="item-media" style="background:${meta.color}22;color:${meta.color}"><img src="${imageCache[it.imageRef]}" alt=""></div>`:''}
           <div class="item-body">
             <div class="item-title">${escapeHtml(it.title||'未命名')}</div>
             ${it.desc?`<div class="item-desc">${escapeHtml(it.desc)}</div>`:''}
@@ -501,7 +522,6 @@ function renderTimeline(){
           </div>
         </div>
       </div>`;
-    if(!(it.imageRef && imageCache[it.imageRef])){ row.querySelector('.item-media').textContent = meta.icon; }
     wrap.appendChild(row);
   });
 }
@@ -686,10 +706,10 @@ function renderBuyList(){
     const cat = getCat('buy', catKey);
     html += `<div class="cat-group"><div class="cat-group-head"><span class="cat-dot" style="background:${cat.color}"></span>${cat.icon} ${cat.label} (${items.length})</div>`;
     items.forEach(it=>{
-      const media = (it.imageRef && imageCache[it.imageRef]) ? `<img src="${imageCache[it.imageRef]}">` : cat.icon;
+      const hasImage = it.imageRef && imageCache[it.imageRef];
       html += `<div class="buy-item">
         <div class="checkbox ${it.checked?'checked':''}" onclick="toggleBuy('${it.id}')">${it.checked?'✓':''}</div>
-        <div class="buy-media" style="background:${cat.color}22;color:${cat.color}">${media}</div>
+        ${hasImage?`<div class="buy-media" style="background:${cat.color}22;color:${cat.color}"><img src="${imageCache[it.imageRef]}"></div>`:''}
         <div class="buy-body">
           <div class="buy-name ${it.checked?'done':''}">${escapeHtml(it.name)}</div>
           ${it.location?`<div class="buy-location">📍 ${escapeHtml(it.location)}</div>`:''}
