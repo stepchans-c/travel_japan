@@ -362,16 +362,30 @@ const GIST_API = `https://api.github.com/gists/${GIST_ID}`;
 const GH_HEADERS = { 'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github+json' };
 
 let latestGist = null;
+let dataLoadOk = false; // safety flag: saves are blocked unless the last load fully succeeded
 async function fetchGist(){
   const res = await fetch(GIST_API, { headers: GH_HEADERS });
   if(!res.ok) throw new Error('Gist fetch failed: '+res.status);
   return res.json();
 }
-function parseFile(gist, name, fallback){
-  try{ const f = gist.files[name]; return f ? JSON.parse(f.content) : fallback; }
-  catch(e){ return fallback; }
+// GitHub's API returns a truncated "content" field for large files (over ~1MB).
+// If that happens, fetch the file's raw_url separately to get the real, full content.
+async function getFileFullContent(gist, name){
+  const file = gist.files && gist.files[name];
+  if(!file) return null;
+  if(file.truncated && file.raw_url){
+    const res = await fetch(file.raw_url);
+    if(!res.ok) throw new Error('Raw file fetch failed for '+name+': '+res.status);
+    return await res.text();
+  }
+  return file.content;
+}
+async function parseFile(gist, name, fallback){
+  const content = await getFileFullContent(gist, name); // throws on failure — caller must not swallow this
+  return content ? JSON.parse(content) : fallback;
 }
 async function saveKey(name, obj, retries=1){
+  if(!dataLoadOk){ showToast('資料尚未正確載入，暫停儲存以避免覆蓋資料'); return false; }
   for(let attempt=0; attempt<=retries; attempt++){
     try{
       const res = await fetch(GIST_API, {
@@ -401,15 +415,16 @@ function showToast(msg){
    in itinerary/buy-list) so that checking a box, editing a title, etc.
    doesn't have to re-send every photo every time. */
 let imageCache = {};
-function loadImageCacheFromGist(gist){
-  Object.keys(gist.files||{}).forEach(name=>{
-    if(name.startsWith('img-')){
-      imageCache[name] = gist.files[name].content;
-    }
-  });
+async function loadImageCacheFromGist(gist){
+  const names = Object.keys(gist.files||{}).filter(n=>n.startsWith('img-'));
+  await Promise.all(names.map(async(name)=>{
+    const content = await getFileFullContent(gist, name); // throws on failure — propagate up
+    if(content) imageCache[name] = content;
+  }));
 }
 function newImageRef(prefix){ return `img-${prefix}-${Date.now()}-${Math.random().toString(36).slice(2,7)}`; }
 async function saveImage(ref, dataUrl, retries=1){
+  if(!dataLoadOk){ showToast('資料尚未正確載入，暫停儲存以避免覆蓋資料'); return false; }
   for(let attempt=0; attempt<=retries; attempt++){
     try{
       const res = await fetch(GIST_API, {
@@ -435,24 +450,31 @@ function deleteImageBestEffort(ref){
 }
 
 async function loadAll(){
+  dataLoadOk = false;
   let gist;
-  try{ gist = await fetchGist(); }
-  catch(e){ showToast('無法讀取資料，請確認 GIST_ID 與 GITHUB_TOKEN 設定正確'); gist = { files: {} }; }
-  latestGist = gist;
-  CAT.itin = parseFile(gist, 'itin-types.json', {...DEFAULTS.itin});
-  CAT.buy = parseFile(gist, 'buy-categories.json', {...DEFAULTS.buy});
-  CAT.exp = parseFile(gist, 'exp-categories.json', {...DEFAULTS.exp});
-  itinerary = parseFile(gist, 'itinerary.json', {});
-  buyList = parseFile(gist, 'buy-list.json', []);
-  expenses = parseFile(gist, 'expenses.json', []);
-  // Guard against a file accidentally containing the wrong shape (e.g. {} instead of []).
-  if(!Array.isArray(buyList)) buyList = [];
-  if(!Array.isArray(expenses)) expenses = [];
-  if(typeof itinerary !== 'object' || itinerary === null || Array.isArray(itinerary)) itinerary = {};
-  ['itin','buy','exp'].forEach(kind=>{
-    if(typeof CAT[kind] !== 'object' || CAT[kind] === null || Array.isArray(CAT[kind])) CAT[kind] = {...DEFAULTS[kind]};
-  });
-  loadImageCacheFromGist(gist);
+  try{
+    gist = await fetchGist();
+    latestGist = gist;
+    CAT.itin = await parseFile(gist, 'itin-types.json', {...DEFAULTS.itin});
+    CAT.buy = await parseFile(gist, 'buy-categories.json', {...DEFAULTS.buy});
+    CAT.exp = await parseFile(gist, 'exp-categories.json', {...DEFAULTS.exp});
+    itinerary = await parseFile(gist, 'itinerary.json', {});
+    buyList = await parseFile(gist, 'buy-list.json', []);
+    expenses = await parseFile(gist, 'expenses.json', []);
+    await loadImageCacheFromGist(gist);
+    // Guard against a file accidentally containing the wrong shape (e.g. {} instead of []).
+    if(!Array.isArray(buyList)) buyList = [];
+    if(!Array.isArray(expenses)) expenses = [];
+    if(typeof itinerary !== 'object' || itinerary === null || Array.isArray(itinerary)) itinerary = {};
+    ['itin','buy','exp'].forEach(kind=>{
+      if(typeof CAT[kind] !== 'object' || CAT[kind] === null || Array.isArray(CAT[kind])) CAT[kind] = {...DEFAULTS[kind]};
+    });
+    dataLoadOk = true;
+  }catch(e){
+    console.error('loadAll failed', e);
+    showToast('資料載入失敗，已暫停儲存功能以保護現有資料，請重新整理再試');
+    dataLoadOk = false;
+  }
 }
 function saveItinerary(){ return saveKey('itinerary.json', itinerary); }
 function saveBuyList(){ return saveKey('buy-list.json', buyList); }
