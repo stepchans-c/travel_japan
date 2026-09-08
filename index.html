@@ -6,16 +6,17 @@
 <title>26/27 東京-近郊-東北 行程</title>
 <style>
   :root{
-    --bg: #E6EBF2;
-    --card: #FFFFFF;
-    --ink: #1F2E42;
-    --ink-soft: #7B8CA6;
-    --navy: #1F3350;
-    --navy-soft: #2E4A6E;
-    --line: #D2DCE8;
+    --bg: #131C29;
+    --card: #1D2A3B;
+    --surface2: #263547;
+    --ink: #E7ECF3;
+    --ink-soft: #8FA1BA;
+    --navy: #5578A0;
+    --navy-soft: #6688AE;
+    --line: #2E3E52;
     --accent: #7C93B3;
-    --green: #5B9279;
-    --shadow: 0 2px 10px rgba(31,51,80,0.08);
+    --green: #6FA98A;
+    --shadow: 0 2px 10px rgba(0,0,0,0.35);
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
   body{ margin:0; font-family: -apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif; background:var(--bg); color:var(--ink); display:flex; justify-content:center; }
@@ -47,20 +48,20 @@
   .item-rail{ display:flex; flex-direction:column; align-items:center; width:14px; padding-top:4px; }
   .item-rail .dot{ width:9px; height:9px; border-radius:50%; background:var(--navy); flex:0 0 9px; }
   .item-rail .line{ width:2px; flex:1; background:var(--line); margin-top:4px; }
-  .card{ background:var(--card); border-radius:16px; box-shadow:var(--shadow); padding:12px 14px; margin-bottom:14px; flex:1; position:relative; }
+  .card{ background:var(--card); border-radius:14px; box-shadow:var(--shadow); padding:10px 12px; margin-bottom:9px; flex:1; position:relative; }
   .item-main{ display:flex; gap:10px; }
-  .item-media{ width:56px; height:56px; border-radius:12px; flex:0 0 56px; overflow:hidden; display:flex; align-items:center; justify-content:center; font-size:20px; }
+  .item-media{ width:48px; height:48px; border-radius:11px; flex:0 0 48px; overflow:hidden; display:flex; align-items:center; justify-content:center; font-size:18px; }
   .item-media img{ width:100%; height:100%; object-fit:cover; }
-  .item-body{ flex:1; min-width:0; padding-right:26px; }
+  .item-body{ flex:1; min-width:0; padding-right:24px; }
   .item-title{ font-size:14.5px; font-weight:700; }
-  .item-desc{ font-size:12px; color:var(--ink-soft); margin-top:3px; line-height:1.5; white-space:pre-line; }
-  .item-meta{ display:flex; align-items:center; gap:6px; margin-top:8px; }
-  .duration-pill{ font-size:10.5px; color:var(--ink-soft); background:#EEF1F5; padding:2px 8px; border-radius:20px; }
-  .item-actions{ display:flex; gap:8px; margin-left:auto; }
-  .icon-btn{ width:28px; height:28px; border-radius:8px; border:none; background:#EEF1F5; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:13px; }
+  .item-desc{ font-size:12px; color:var(--ink-soft); margin-top:2px; line-height:1.4; white-space:pre-line; }
+  .item-meta{ display:flex; align-items:center; gap:6px; margin-top:6px; }
+  .duration-pill{ font-size:10.5px; color:var(--ink-soft); background:var(--surface2); padding:2px 8px; border-radius:20px; }
+  .icon-btn{ width:28px; height:28px; border-radius:8px; border:none; background:var(--surface2); display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:13px; }
   .icon-btn.edit{ color:var(--ink-soft); }
   .icon-btn.del{ color:#B24A3B; }
-  .map-pin{ position:absolute; top:10px; right:10px; width:26px; height:26px; border-radius:50%; background:var(--accent); color:#fff; border:none; display:flex; align-items:center; justify-content:center; font-size:12px; cursor:pointer; }
+  .map-pin{ position:absolute; top:8px; right:8px; width:24px; height:24px; border-radius:50%; background:var(--accent); color:#fff; border:none; display:flex; align-items:center; justify-content:center; font-size:11px; cursor:pointer; }
+  .edit-pin{ position:absolute; top:8px; width:24px; height:24px; border-radius:50%; background:var(--surface2); color:var(--ink-soft); border:none; display:flex; align-items:center; justify-content:center; font-size:11px; cursor:pointer; }
 
   .empty-state{ text-align:center; padding:60px 30px; color:var(--ink-soft); }
   .empty-state .em{ font-size:32px; margin-bottom:10px; }
@@ -87,7 +88,7 @@
   .buy-media img{ width:100%; height:100%; object-fit:cover; }
   .buy-body{ flex:1; min-width:0; }
   .buy-location{ font-size:11px; color:var(--ink-soft); margin-top:2px; }
-  .checkbox{ width:21px; height:21px; border-radius:50%; border:2px solid #D3D8E0; flex:0 0 21px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:12px; color:#fff; }
+  .checkbox{ width:21px; height:21px; border-radius:50%; border:2px solid var(--line); flex:0 0 21px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:12px; color:#fff; }
   .checkbox.checked{ background:var(--green); border-color:var(--green); }
   .buy-name{ flex:1; font-size:14px; font-weight:600; }
   .buy-name.done{ text-decoration:line-through; color:var(--ink-soft); }
@@ -102,7 +103,7 @@
   .bars{ margin-top:16px; display:flex; flex-direction:column; gap:9px; }
   .bar-row{ display:flex; align-items:center; gap:8px; }
   .bar-label{ width:64px; font-size:11.5px; color:var(--ink-soft); flex:0 0 64px; }
-  .bar-track{ flex:1; height:8px; border-radius:6px; background:#EEF1F5; overflow:hidden; }
+  .bar-track{ flex:1; height:8px; border-radius:6px; background:var(--surface2); overflow:hidden; }
   .bar-fill{ height:100%; border-radius:6px; }
   .bar-pct{ width:38px; text-align:right; font-size:11px; color:var(--ink-soft); flex:0 0 38px; }
 
@@ -115,7 +116,7 @@
 
   .list-header{ padding:16px 18px 6px; font-size:13px; font-weight:700; color:var(--ink-soft); }
 
-  .bottomnav{ position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:480px; background:#fff; border-top:1px solid var(--line); display:flex; z-index:30; padding:8px 0 max(8px, env(safe-area-inset-bottom)); }
+  .bottomnav{ position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:480px; background:var(--card); border-top:1px solid var(--line); display:flex; z-index:30; padding:8px 0 max(8px, env(safe-area-inset-bottom)); }
   .nav-item{ flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; cursor:pointer; color:var(--ink-soft); }
   .nav-item .ic{ font-size:19px; }
   .nav-item .lb{ font-size:10.5px; font-weight:600; }
@@ -132,30 +133,30 @@
   .sheet-footer{ flex:0 0 auto; padding:10px 18px calc(10px + env(safe-area-inset-bottom)); border-top:1px solid var(--line); background:var(--bg); }
   .field{ margin-bottom:11px; }
   .field label{ font-size:12px; color:var(--ink-soft); font-weight:700; display:block; margin-bottom:5px; }
-  .field input, .field select, .field textarea{ width:100%; border:1px solid var(--line); background:#fff; border-radius:12px; padding:10px 12px; font-size:16px; font-family:inherit; color:var(--ink); }
+  .field input, .field select, .field textarea{ width:100%; border:1px solid var(--line); background:var(--card); border-radius:12px; padding:10px 12px; font-size:16px; font-family:inherit; color:var(--ink); }
   .field textarea{ resize:vertical; min-height:44px; }
   .row2{ display:flex; }
   .row2 .field{ flex:1; min-width:0; }
   .row2 .field:not(:last-child){ margin-right:10px; }
   .row2 .field input{ width:100%; min-width:0; box-sizing:border-box; }
   .type-grid{ display:flex; flex-wrap:wrap; gap:8px; }
-  .type-opt{ flex:0 0 70px; text-align:center; padding:8px 4px; border-radius:12px; border:1.5px solid var(--line); background:#fff; cursor:pointer; font-size:11.5px; }
+  .type-opt{ flex:0 0 70px; text-align:center; padding:8px 4px; border-radius:12px; border:1.5px solid var(--line); background:var(--card); cursor:pointer; font-size:11.5px; }
   .type-opt.sel{ border-color:var(--navy); background:#EDF0F6; font-weight:700; }
   .type-opt .e{ font-size:17px; display:block; margin-bottom:3px; }
   .type-opt.manage{ border-style:dashed; color:var(--ink-soft); }
 
   .img-upload{ display:flex; align-items:center; gap:12px; }
-  .img-upload .thumb{ width:52px; height:52px; border-radius:12px; background:#fff; border:1.5px dashed var(--line); display:flex; align-items:center; justify-content:center; overflow:hidden; font-size:18px; color:var(--ink-soft); flex:0 0 52px; cursor:pointer; }
+  .img-upload .thumb{ width:52px; height:52px; border-radius:12px; background:var(--card); border:1.5px dashed var(--line); display:flex; align-items:center; justify-content:center; overflow:hidden; font-size:18px; color:var(--ink-soft); flex:0 0 52px; cursor:pointer; }
   .img-upload .thumb img{ width:100%; height:100%; object-fit:cover; }
   .img-upload .remove-img{ font-size:12px; color:#B24A3B; background:none; border:none; cursor:pointer; }
 
   .cat-row{ display:flex; align-items:center; gap:10px; background:var(--card); border-radius:12px; padding:10px 12px; margin-bottom:8px; }
   .cat-row .swatch{ width:30px; height:30px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:15px; flex:0 0 30px; }
   .cat-row .name{ flex:1; font-size:13.5px; font-weight:600; }
-  .cat-row .mini-btn{ width:26px; height:26px; border-radius:7px; border:none; background:#EEF1F5; font-size:12px; cursor:pointer; }
+  .cat-row .mini-btn{ width:26px; height:26px; border-radius:7px; border:none; background:var(--surface2); font-size:12px; cursor:pointer; }
 
   .emoji-grid, .color-grid{ display:flex; flex-wrap:wrap; gap:8px; }
-  .emoji-opt{ width:36px; height:36px; border-radius:9px; border:1.5px solid var(--line); background:#fff; font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .emoji-opt{ width:36px; height:36px; border-radius:9px; border:1.5px solid var(--line); background:var(--card); font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
   .emoji-opt.sel{ border-color:var(--navy); background:#EDF0F6; }
   .color-opt{ width:30px; height:30px; border-radius:50%; cursor:pointer; border:2px solid transparent; }
   .color-opt.sel{ border-color:var(--ink); }
@@ -215,7 +216,7 @@
     <div class="sheet-head">
       <button class="cancel" onclick="closeModal('item-overlay')">取消</button>
       <div class="title">行程項目</div>
-      <div style="width:34px;"></div>
+      <button class="icon-btn del" id="item-delete-btn" style="display:none;" onclick="deleteItemFromModal()">🗑</button>
     </div>
     <div class="sheet-body">
       <div class="field">
@@ -529,19 +530,14 @@ function renderTimeline(){
         ${idx<items.length-1?'<div class="line"></div>':''}
       </div>
       <div class="card">
-        ${it.maplink?`<button class="map-pin" onclick="openMap('${encodeURIComponent(it.maplink)}')">📍</button>`:''}
+        ${it.maplink?`<button class="map-pin" onclick="openMap('${encodeURIComponent(it.maplink)}')" style="right:8px;">📍</button>`:''}
+        <button class="edit-pin" onclick="editItem('${it.id}')" style="right:${it.maplink?'38px':'8px'};">✎</button>
         <div class="item-main">
           ${hasImage?`<div class="item-media" style="background:${meta.color}22;color:${meta.color}"><img src="${imageCache[it.imageRef]}" alt=""></div>`:''}
           <div class="item-body">
             <div class="item-title">${escapeHtml(it.title||'未命名')}</div>
             ${it.desc?`<div class="item-desc">${escapeHtml(it.desc)}</div>`:''}
-            <div class="item-meta">
-              ${it.mapcode?`<span class="duration-pill">🗺 ${escapeHtml(it.mapcode)}</span>`:''}
-              <div class="item-actions">
-                <button class="icon-btn edit" onclick="editItem('${it.id}')">✎</button>
-                <button class="icon-btn del" onclick="deleteItem('${it.id}')">🗑</button>
-              </div>
-            </div>
+            ${it.mapcode?`<div class="item-meta"><span class="duration-pill">🗺 ${escapeHtml(it.mapcode)}</span></div>`:''}
           </div>
         </div>
       </div>`;
@@ -582,6 +578,7 @@ function openItemModal(){
   editingItemId = null; editingDayKey = currentDayKey; currentItemType = Object.keys(CAT.itin)[0]||'attraction'; tempImageData = null; tempImageChanged = false;
   document.getElementById('f-time').value=''; document.getElementById('f-endtime').value='';
   document.getElementById('f-title').value=''; document.getElementById('f-mapcode').value=''; document.getElementById('f-maplink').value=''; document.getElementById('f-desc').value='';
+  document.getElementById('item-delete-btn').style.display = 'none';
   resetImageThumb();
   renderItemTypeGrid();
   document.getElementById('item-overlay').classList.add('show');
@@ -592,9 +589,17 @@ function editItem(id){
   tempImageData = (it.imageRef && imageCache[it.imageRef]) || null; tempImageChanged = false;
   document.getElementById('f-time').value = it.time||''; document.getElementById('f-endtime').value = it.endTime||'';
   document.getElementById('f-title').value = it.title||''; document.getElementById('f-mapcode').value = it.mapcode||''; document.getElementById('f-maplink').value = it.maplink||''; document.getElementById('f-desc').value = it.desc||'';
+  document.getElementById('item-delete-btn').style.display = 'flex';
   resetImageThumb();
   renderItemTypeGrid();
   document.getElementById('item-overlay').classList.add('show');
+}
+async function deleteItemFromModal(){
+  if(!editingItemId) return;
+  if(!confirm('確定要刪除這個行程項目嗎？')) return;
+  const idToDelete = editingItemId;
+  closeModal('item-overlay');
+  await deleteItem(idToDelete);
 }
 let isSavingItem = false;
 async function saveItem(){
