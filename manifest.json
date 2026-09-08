@@ -1,0 +1,13 @@
+{
+  "name": "26/27 東京-近郊-東北 行程",
+  "short_name": "東京行程",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#131C29",
+  "theme_color": "#131C29",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
