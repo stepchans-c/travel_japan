@@ -20,12 +20,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Inject secrets into index.html
+      - name: Inject secrets into index.html and copy static assets
         run: |
           mkdir -p dist
           sed -e "s|PUT_YOUR_GIST_ID_HERE|${{ secrets.GIST_ID }}|g" \
               -e "s|PUT_YOUR_TOKEN_HERE|${{ secrets.GIST_ACCESS_TOKEN }}|g" \
               index.html > dist/index.html
+          cp manifest.json dist/ 2>/dev/null || true
+          cp icon-192.png dist/ 2>/dev/null || true
+          cp icon-512.png dist/ 2>/dev/null || true
+          cp apple-touch-icon.png dist/ 2>/dev/null || true
 
       - uses: actions/upload-pages-artifact@v3
         with:
