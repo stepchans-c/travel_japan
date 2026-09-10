@@ -256,7 +256,7 @@
     <div class="sheet-head">
       <button class="cancel" onclick="closeModal('buy-overlay')">取消</button>
       <div class="title" id="buy-modal-title">新增購買項目</div>
-      <div style="width:34px;"></div>
+      <button class="icon-btn del" id="buy-delete-btn" style="display:none;" onclick="deleteBuyFromModal()">🗑</button>
     </div>
     <div class="sheet-body">
       <div class="field">
@@ -269,6 +269,7 @@
       </div>
       <div class="field"><label>品項名稱</label><input type="text" id="b-name" placeholder="例如 白色戀人"></div>
       <div class="field"><label>哪裡買 (選填)</label><input type="text" id="b-location" placeholder="例如 唐吉訶德 / 新千歲機場"></div>
+      <div class="field"><label>網址 (選填)</label><input type="text" id="b-link" placeholder="例如 https://example.com"></div>
       <div class="field"><label>分類</label><div class="type-grid" id="buy-cat-grid"></div></div>
     </div>
     <div class="sheet-footer"><button class="primary-btn" onclick="saveBuyItem()">儲存</button></div>
@@ -566,7 +567,16 @@ function formatDuration(start, end){
   if(h>0) return `${h}hr`;
   return `${m}min`;
 }
-function openMap(linkEnc){ window.open(decodeURIComponent(linkEnc), '_blank'); }
+function openExternalLink(linkEnc){
+  let url = decodeURIComponent(linkEnc);
+  if(!/^https?:\/\//i.test(url)) url = 'https://' + url;
+  const a = document.createElement('a');
+  a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+function openMap(linkEnc){ openExternalLink(linkEnc); }
 
 function renderItemTypeGrid(){
   const wrap = document.getElementById('item-type-grid'); wrap.innerHTML = '';
@@ -751,8 +761,8 @@ function renderBuyList(){
           <div class="buy-name ${it.checked?'done':''}">${escapeHtml(it.name)}</div>
           ${it.location?`<div class="buy-location">📍 ${escapeHtml(it.location)}</div>`:''}
         </div>
+        ${it.link?`<button class="icon-btn" style="color:var(--navy);" onclick="openExternalLink('${encodeURIComponent(it.link)}')">🔗</button>`:''}
         <button class="icon-btn edit" onclick="editBuyItem('${it.id}')">✎</button>
-        <button class="icon-btn del" onclick="deleteBuy('${it.id}')">🗑</button>
       </div>`;
     });
     html += `</div>`;
@@ -772,7 +782,8 @@ function renderBuyCatGrid(){
 function openBuyModal(){
   editingBuyId = null; tempBuyImageData = null; tempBuyImageChanged = false;
   document.getElementById('buy-modal-title').textContent = '新增購買項目';
-  document.getElementById('b-name').value=''; document.getElementById('b-location').value='';
+  document.getElementById('b-name').value=''; document.getElementById('b-location').value=''; document.getElementById('b-link').value='';
+  document.getElementById('buy-delete-btn').style.display = 'none';
   selectedBuyCat = Object.keys(CAT.buy)[0]||'essentials';
   resetBuyImageThumb(); renderBuyCatGrid(); document.getElementById('buy-overlay').classList.add('show');
 }
@@ -780,9 +791,17 @@ function editBuyItem(id){
   const it = buyList.find(x=>x.id===id); if(!it) return;
   editingBuyId = id; tempBuyImageData = (it.imageRef && imageCache[it.imageRef]) || null; tempBuyImageChanged = false;
   document.getElementById('buy-modal-title').textContent = '編輯購買項目';
-  document.getElementById('b-name').value = it.name||''; document.getElementById('b-location').value = it.location||'';
+  document.getElementById('b-name').value = it.name||''; document.getElementById('b-location').value = it.location||''; document.getElementById('b-link').value = it.link||'';
+  document.getElementById('buy-delete-btn').style.display = 'flex';
   selectedBuyCat = it.category;
   resetBuyImageThumb(); renderBuyCatGrid(); document.getElementById('buy-overlay').classList.add('show');
+}
+async function deleteBuyFromModal(){
+  if(!editingBuyId) return;
+  if(!confirm('確定要刪除這個購買項目嗎？')) return;
+  const idToDelete = editingBuyId;
+  closeModal('buy-overlay');
+  await deleteBuy(idToDelete);
 }
 let isSavingBuy = false;
 async function saveBuyItem(){
@@ -790,6 +809,7 @@ async function saveBuyItem(){
   try{
     const name = document.getElementById('b-name').value.trim(); if(!name){ alert('請輸入品項名稱'); return; }
     const location = document.getElementById('b-location').value.trim();
+    const link = document.getElementById('b-link').value.trim();
     const existing = editingBuyId ? buyList.find(x=>x.id===editingBuyId) : null;
     const oldImageRef = existing ? existing.imageRef : null;
     let imageRef = oldImageRef;
@@ -808,9 +828,9 @@ async function saveBuyItem(){
     let addedNew = false, targetIdx = -1, previousSnapshot = null;
     if(editingBuyId){
       targetIdx = buyList.findIndex(x=>x.id===editingBuyId);
-      if(targetIdx>-1){ previousSnapshot = {...buyList[targetIdx]}; buyList[targetIdx] = { ...buyList[targetIdx], name, location, category: selectedBuyCat, imageRef }; }
+      if(targetIdx>-1){ previousSnapshot = {...buyList[targetIdx]}; buyList[targetIdx] = { ...buyList[targetIdx], name, location, link, category: selectedBuyCat, imageRef }; }
     } else {
-      buyList.push({ id:'b'+Date.now(), name, location, category: selectedBuyCat, checked:false, imageRef });
+      buyList.push({ id:'b'+Date.now(), name, location, link, category: selectedBuyCat, checked:false, imageRef });
       addedNew = true;
     }
     const ok = await saveBuyList();
