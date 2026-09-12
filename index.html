@@ -96,7 +96,6 @@
   .buy-media{ width:40px; height:40px; border-radius:10px; flex:0 0 40px; overflow:hidden; display:flex; align-items:center; justify-content:center; font-size:15px; cursor:pointer; }
   .buy-media img{ width:100%; height:100%; object-fit:cover; }
   .buy-body{ flex:1; min-width:0; }
-  .buy-location{ font-size:11px; color:var(--ink-soft); margin-top:2px; }
   .checkbox{ width:21px; height:21px; border-radius:50%; border:2px solid var(--line); flex:0 0 21px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:12px; color:#fff; }
   .checkbox.checked{ background:var(--green); border-color:var(--green); }
   .buy-name{ flex:1; font-size:14px; font-weight:600; }
@@ -173,6 +172,13 @@
   .primary-btn{ width:100%; background:var(--navy); color:#fff; border:none; border-radius:12px; padding:12px; font-weight:700; font-size:14px; cursor:pointer; }
 
   h1,h2,h3,p{ margin:0; }
+  .tag-input-row{ display:flex; gap:8px; margin-bottom:8px; }
+  .tag-input-row input{ flex:1; }
+  .tag-input-row button{ flex:0 0 auto; padding:0 14px; border-radius:12px; border:none; background:var(--navy); color:#fff; font-weight:700; font-size:13px; cursor:pointer; }
+  .tag-list{ display:flex; flex-wrap:wrap; gap:6px; }
+  .tag-chip{ display:flex; align-items:center; gap:6px; background:var(--surface2); color:var(--ink); padding:5px 10px; border-radius:20px; font-size:12.5px; }
+  .tag-chip .x{ cursor:pointer; color:var(--ink-soft); font-weight:700; }
+  .buy-location{ display:inline-flex; align-items:center; gap:3px; font-size:11px; color:var(--ink-soft); background:var(--surface2); padding:2px 8px; border-radius:12px; margin:2px 4px 0 0; }
   .lightbox{ position:fixed; inset:0; background:rgba(0,0,0,0.88); display:none; align-items:center; justify-content:center; z-index:70; padding:22px; }
   .lightbox.show{ display:flex; }
   .lightbox img{ max-width:100%; max-height:100%; border-radius:12px; object-fit:contain; }
@@ -272,7 +278,14 @@
         </div>
       </div>
       <div class="field"><label>品項名稱</label><input type="text" id="b-name" placeholder="例如 白色戀人"></div>
-      <div class="field"><label>哪裡買 (選填)</label><input type="text" id="b-location" placeholder="例如 唐吉訶德 / 新千歲機場"></div>
+      <div class="field">
+        <label>哪裡買 (可新增多個地點)</label>
+        <div class="tag-input-row">
+          <input type="text" id="b-location-input" placeholder="輸入地點，例如 唐吉訶德" onkeydown="if(event.key==='Enter'){event.preventDefault();addBuyLocationTag();}">
+          <button type="button" onclick="addBuyLocationTag()">新增</button>
+        </div>
+        <div class="tag-list" id="b-location-tags"></div>
+      </div>
       <div class="field"><label>網址 (選填)</label><input type="text" id="b-link" placeholder="例如 https://example.com"></div>
       <div class="field"><label>分類</label><div class="type-grid" id="buy-cat-grid"></div></div>
     </div>
@@ -730,9 +743,14 @@ async function handleBuyImageUpload(evt){
 function removeBuyImage(){ tempBuyImageData = null; tempBuyImageChanged = true; document.getElementById('b-image').value=''; resetBuyImageThumb(); }
 
 /* ---------- TO-BUY ---------- */
+function getItemLocations(it){
+  if(Array.isArray(it.locations)) return it.locations.filter(l=>l && l.trim());
+  if(it.location && it.location.trim()) return [it.location.trim()]; // legacy single-location items
+  return [];
+}
 function getBuyLocations(){
   const set = new Set();
-  buyList.forEach(b=>{ if(b.location && b.location.trim()) set.add(b.location.trim()); });
+  buyList.forEach(b=> getItemLocations(b).forEach(loc=>set.add(loc)));
   return Array.from(set).sort();
 }
 function renderBuyTabs(){
@@ -761,18 +779,19 @@ function renderBuyList(){
   let html = '', any = false;
   groups.forEach(catKey=>{
     let items = buyList.filter(b=>b.category===catKey);
-    if(currentLocationFilter!=='all') items = items.filter(b=>(b.location||'').trim()===currentLocationFilter);
+    if(currentLocationFilter!=='all') items = items.filter(b=> getItemLocations(b).includes(currentLocationFilter));
     if(items.length===0) return; any = true;
     const cat = getCat('buy', catKey);
     html += `<div class="cat-group"><div class="cat-group-head"><span class="cat-dot" style="background:${cat.color}"></span>${cat.icon} ${cat.label} (${items.length})</div>`;
     items.forEach(it=>{
       const hasImage = it.imageRef && imageCache[it.imageRef];
+      const locs = getItemLocations(it);
       html += `<div class="buy-item">
         <div class="checkbox ${it.checked?'checked':''}" onclick="toggleBuy('${it.id}')">${it.checked?'✓':''}</div>
         ${hasImage?`<div class="buy-media" style="background:${cat.color}22;color:${cat.color}" onclick="openLightbox('${it.imageRef}')"><img src="${imageCache[it.imageRef]}"></div>`:''}
         <div class="buy-body">
           <div class="buy-name ${it.checked?'done':''}">${escapeHtml(it.name)}</div>
-          ${it.location?`<div class="buy-location">📍 ${escapeHtml(it.location)}</div>`:''}
+          ${locs.length?`<div>${locs.map(loc=>`<span class="buy-location">📍 ${escapeHtml(loc)}</span>`).join('')}</div>`:''}
         </div>
         ${it.link?`<button class="icon-btn" style="color:var(--navy);" onclick="openExternalLink('${encodeURIComponent(it.link)}')">🔗</button>`:''}
         <button class="icon-btn edit" onclick="editBuyItem('${it.id}')">✎</button>
@@ -792,22 +811,40 @@ function renderBuyCatGrid(){
   const manage = document.createElement('div'); manage.className='type-opt manage'; manage.innerHTML=`<span class="e">⚙️</span>管理`;
   manage.onclick = ()=> openCatManager('buy'); wrap.appendChild(manage);
 }
+let tempBuyLocations = [];
+function renderBuyLocationTags(){
+  const wrap = document.getElementById('b-location-tags');
+  wrap.innerHTML = tempBuyLocations.map((loc,idx)=>`<div class="tag-chip">${escapeHtml(loc)}<span class="x" onclick="removeBuyLocationTag(${idx})">✕</span></div>`).join('');
+}
+function addBuyLocationTag(){
+  const input = document.getElementById('b-location-input');
+  const val = input.value.trim();
+  if(!val) return;
+  if(!tempBuyLocations.includes(val)) tempBuyLocations.push(val);
+  input.value = '';
+  renderBuyLocationTags();
+}
+function removeBuyLocationTag(idx){
+  tempBuyLocations.splice(idx,1);
+  renderBuyLocationTags();
+}
 function openBuyModal(){
-  editingBuyId = null; tempBuyImageData = null; tempBuyImageChanged = false;
+  editingBuyId = null; tempBuyImageData = null; tempBuyImageChanged = false; tempBuyLocations = [];
   document.getElementById('buy-modal-title').textContent = '新增購買項目';
-  document.getElementById('b-name').value=''; document.getElementById('b-location').value=''; document.getElementById('b-link').value='';
+  document.getElementById('b-name').value=''; document.getElementById('b-location-input').value=''; document.getElementById('b-link').value='';
   document.getElementById('buy-delete-btn').style.display = 'none';
   selectedBuyCat = Object.keys(CAT.buy)[0]||'essentials';
-  resetBuyImageThumb(); renderBuyCatGrid(); document.getElementById('buy-overlay').classList.add('show');
+  resetBuyImageThumb(); renderBuyCatGrid(); renderBuyLocationTags(); document.getElementById('buy-overlay').classList.add('show');
 }
 function editBuyItem(id){
   const it = buyList.find(x=>x.id===id); if(!it) return;
   editingBuyId = id; tempBuyImageData = (it.imageRef && imageCache[it.imageRef]) || null; tempBuyImageChanged = false;
+  tempBuyLocations = getItemLocations(it).slice();
   document.getElementById('buy-modal-title').textContent = '編輯購買項目';
-  document.getElementById('b-name').value = it.name||''; document.getElementById('b-location').value = it.location||''; document.getElementById('b-link').value = it.link||'';
+  document.getElementById('b-name').value = it.name||''; document.getElementById('b-location-input').value=''; document.getElementById('b-link').value = it.link||'';
   document.getElementById('buy-delete-btn').style.display = 'flex';
   selectedBuyCat = it.category;
-  resetBuyImageThumb(); renderBuyCatGrid(); document.getElementById('buy-overlay').classList.add('show');
+  resetBuyImageThumb(); renderBuyCatGrid(); renderBuyLocationTags(); document.getElementById('buy-overlay').classList.add('show');
 }
 async function deleteBuyFromModal(){
   if(!editingBuyId) return;
@@ -821,7 +858,9 @@ async function saveBuyItem(){
   if(isSavingBuy) return; isSavingBuy = true;
   try{
     const name = document.getElementById('b-name').value.trim(); if(!name){ alert('請輸入品項名稱'); return; }
-    const location = document.getElementById('b-location').value.trim();
+    const leftoverLoc = document.getElementById('b-location-input').value.trim();
+    if(leftoverLoc && !tempBuyLocations.includes(leftoverLoc)) tempBuyLocations.push(leftoverLoc); // catch anything typed but not tapped "新增"
+    const locations = tempBuyLocations.slice();
     const link = document.getElementById('b-link').value.trim();
     const existing = editingBuyId ? buyList.find(x=>x.id===editingBuyId) : null;
     const oldImageRef = existing ? existing.imageRef : null;
@@ -841,9 +880,9 @@ async function saveBuyItem(){
     let addedNew = false, targetIdx = -1, previousSnapshot = null;
     if(editingBuyId){
       targetIdx = buyList.findIndex(x=>x.id===editingBuyId);
-      if(targetIdx>-1){ previousSnapshot = {...buyList[targetIdx]}; buyList[targetIdx] = { ...buyList[targetIdx], name, location, link, category: selectedBuyCat, imageRef }; }
+      if(targetIdx>-1){ previousSnapshot = {...buyList[targetIdx]}; buyList[targetIdx] = { ...buyList[targetIdx], name, locations, link, category: selectedBuyCat, imageRef }; delete buyList[targetIdx].location; }
     } else {
-      buyList.push({ id:'b'+Date.now(), name, location, link, category: selectedBuyCat, checked:false, imageRef });
+      buyList.push({ id:'b'+Date.now(), name, locations, link, category: selectedBuyCat, checked:false, imageRef });
       addedNew = true;
     }
     const ok = await saveBuyList();
