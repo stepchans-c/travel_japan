@@ -172,6 +172,26 @@
   .primary-btn{ width:100%; background:var(--navy); color:#fff; border:none; border-radius:12px; padding:12px; font-weight:700; font-size:14px; cursor:pointer; }
 
   h1,h2,h3,p{ margin:0; }
+  .rsv-group{ padding:0 18px; margin-bottom:4px; }
+  .rsv-group-head{ display:flex; align-items:center; justify-content:space-between; padding:10px 2px 7px; font-size:13px; font-weight:700; }
+  .rsv-count{ font-size:11px; font-weight:700; padding:2px 9px; border-radius:12px; background:var(--surface2); color:var(--ink-soft); }
+  .rsv-count.soon{ background:#6B4A1F; color:#FFE2B0; }
+  .rsv-count.late{ background:#7A2F2F; color:#FFD3D3; }
+  .rsv-count.fin{ background:#24493A; color:#BDEBD2; }
+  .rsv-item{ display:flex; align-items:flex-start; background:var(--card); border-radius:14px; padding:10px 12px; margin-bottom:8px; box-shadow:var(--shadow); }
+  .rsv-item .checkbox{ margin:1px 10px 0 0; }
+  .rsv-body{ flex:1; min-width:0; }
+  .rsv-title{ font-size:14px; font-weight:600; line-height:1.4; white-space:pre-line; overflow-wrap:break-word; word-break:break-word; }
+  .rsv-title.done{ text-decoration:line-through; color:var(--ink-soft); }
+  .rsv-meta{ margin-top:5px; }
+  .rsv-pill{ display:inline-block; font-size:11px; color:var(--ink-soft); background:var(--surface2); padding:2px 8px; border-radius:12px; margin:0 6px 4px 0; }
+  .rsv-alt{ font-size:11.5px; color:var(--ink-soft); margin-top:2px; overflow-wrap:break-word; }
+  .rsv-actions{ display:flex; align-items:center; flex:0 0 auto; margin-left:8px; }
+  .rsv-actions .icon-btn{ margin-left:6px; }
+  .icon-btn.wide{ width:auto; min-width:28px; padding:0 8px; font-size:12px; }
+  .toggle-chip{ display:inline-flex; align-items:center; padding:8px 14px; border-radius:12px; border:1.5px solid var(--line); background:var(--card); color:var(--ink); font-size:13px; cursor:pointer; }
+  .toggle-chip.sel{ border-color:var(--navy); background:var(--surface2); font-weight:700; }
+  .field input:disabled{ opacity:0.4; }
   .tag-input-row{ display:flex; gap:8px; margin-bottom:8px; }
   .tag-input-row input{ flex:1; }
   .tag-input-row button{ flex:0 0 auto; padding:0 14px; border-radius:12px; border:none; background:var(--navy); color:#fff; font-weight:700; font-size:13px; cursor:pointer; }
@@ -207,6 +227,12 @@
     <div id="buy-list"></div>
   </div>
 
+  <div id="page-reserve" class="page" style="display:none;">
+    <div class="section-header"><h1>預約提醒</h1><button class="add-link" onclick="openReserveModal()">+ 新增預約</button></div>
+    <div class="tabs-row" id="rsv-tabs"></div>
+    <div id="rsv-list"></div>
+  </div>
+
   <div id="page-expenses" class="page" style="display:none;">
     <div class="section-header"><h1>支出總覽</h1><button class="add-link" onclick="openExpenseModal()">+ 新增支出</button></div>
     <div class="summary-card">
@@ -225,6 +251,7 @@
   <div class="bottomnav">
     <div class="nav-item active" data-page="itinerary" onclick="switchPage('itinerary')"><div class="ic">🗓️</div><div class="lb">行程</div></div>
     <div class="nav-item" data-page="tobuy" onclick="switchPage('tobuy')"><div class="ic">🛍️</div><div class="lb">購物清單</div></div>
+    <div class="nav-item" data-page="reserve" onclick="switchPage('reserve')"><div class="ic">🔔</div><div class="lb">預約</div></div>
     <div class="nav-item" data-page="expenses" onclick="switchPage('expenses')"><div class="ic">💰</div><div class="lb">支出</div></div>
   </div>
 </div>
@@ -293,6 +320,29 @@
   </div>
 </div>
 
+<!-- RESERVATION MODAL -->
+<div class="overlay" id="rsv-overlay">
+  <div class="sheet">
+    <div class="sheet-head">
+      <button class="cancel" onclick="closeModal('rsv-overlay')">取消</button>
+      <div class="title" id="rsv-modal-title">新增預約提醒</div>
+      <button class="icon-btn del" id="rsv-delete-btn" style="display:none;" onclick="deleteReserveFromModal()">🗑</button>
+    </div>
+    <div class="sheet-body">
+      <div class="row2">
+        <div class="field"><label>可預約日期</label><input type="date" id="r-date"></div>
+        <div class="field"><label>開放時間 (選填)</label><input type="time" id="r-time"></div>
+      </div>
+      <div class="field"><div class="toggle-chip" id="r-anytime" onclick="toggleReserveAnytime()">🕐 隨時可預約（無特定開放日期）</div></div>
+      <div class="field"><label>預約項目（含用餐／參觀時間）</label><textarea id="r-title" placeholder="例如 (Dec 29, 20:30) TORIKI 喜"></textarea></div>
+      <div class="field"><label>可預約時段 (選填)</label><input type="text" id="r-slots" placeholder="例如 17:30 or 20:30"></div>
+      <div class="field"><label>網址 (可輸入多個，每行一個)</label><textarea id="r-url" placeholder="https://..."></textarea></div>
+      <div class="field"><label>備選餐廳 (選填)</label><input type="text" id="r-alt" placeholder="例如 備案餐廳名稱"></div>
+    </div>
+    <div class="sheet-footer"><button class="primary-btn" id="rsv-save-btn" onclick="saveReserve()">儲存</button></div>
+  </div>
+</div>
+
 <!-- EXPENSE MODAL -->
 <div class="overlay" id="exp-overlay">
   <div class="sheet">
@@ -346,7 +396,7 @@
 const TRIP_START = new Date(2024,11,29);
 const TRIP_END = new Date(2025,0,9);
 const DOW = ['日','一','二','三','四','五','六'];
-function fmtKey(d){ return d.toISOString().slice(0,10); }
+function fmtKey(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function buildDays(){ const days=[]; let cur=new Date(TRIP_START); while(cur<=TRIP_END){ days.push(new Date(cur)); cur.setDate(cur.getDate()+1); } return days; }
 const TRIP_DAYS = buildDays();
 let currentDayKey = (function(){
@@ -367,7 +417,7 @@ const EMOJI_LIST = ['📍','🍽️','🍰','🛍️','🚆','🎫','💳','⛩�
 const COLOR_SWATCH = ['#4A6FA5','#D9694F','#8A6BB8','#5B9279','#C99A3A','#3B4A68','#9CA3AF','#B24A3B'];
 
 let CAT = { itin:{}, buy:{}, exp:{} };
-let itinerary = {}, buyList = [], expenses = [];
+let itinerary = {}, buyList = [], expenses = [], reservations = [];
 let editingItemId = null, editingDayKey = null, currentItemType = 'attraction', tempImageData = null, tempImageChanged = false;
 let currentBuyTab = 'all', selectedBuyCat = 'essentials', selectedExpCat = 'food';
 let editingBuyId = null, tempBuyImageData = null, tempBuyImageChanged = false, currentLocationFilter = 'all';
@@ -489,10 +539,12 @@ async function loadAll(){
     itinerary = await parseFile(gist, 'itinerary.json', {});
     buyList = await parseFile(gist, 'buy-list.json', []);
     expenses = await parseFile(gist, 'expenses.json', []);
+    reservations = await parseFile(gist, 'reservations.json', []);
     await loadImageCacheFromGist(gist);
     // Guard against a file accidentally containing the wrong shape (e.g. {} instead of []).
     if(!Array.isArray(buyList)) buyList = [];
     if(!Array.isArray(expenses)) expenses = [];
+    if(!Array.isArray(reservations)) reservations = [];
     if(typeof itinerary !== 'object' || itinerary === null || Array.isArray(itinerary)) itinerary = {};
     ['itin','buy','exp'].forEach(kind=>{
       if(typeof CAT[kind] !== 'object' || CAT[kind] === null || Array.isArray(CAT[kind])) CAT[kind] = {...DEFAULTS[kind]};
@@ -507,6 +559,7 @@ async function loadAll(){
 function saveItinerary(){ return saveKey('itinerary.json', itinerary); }
 function saveBuyList(){ return saveKey('buy-list.json', buyList); }
 function saveExpenses(){ return saveKey('expenses.json', expenses); }
+function saveReservations(){ return saveKey('reservations.json', reservations); }
 function saveCatKind(kind){ const map={itin:'itin-types.json',buy:'buy-categories.json',exp:'exp-categories.json'}; return saveKey(map[kind], CAT[kind]); }
 
 
@@ -1032,10 +1085,187 @@ async function saveCategory(){
 function closeModal(id){ document.getElementById(id).classList.remove('show'); }
 function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
 
+/* ---------- RESERVATION REMINDERS ---------- */
+// Filter / sort choice is a per-device preference (kept in localStorage, not in the shared gist).
+let rsvFilter = (function(){ try{ return localStorage.getItem('rsvFilter') || 'todo'; }catch(e){ return 'todo'; } })();
+let rsvSortDir = (function(){ try{ return localStorage.getItem('rsvSortDir') || 'asc'; }catch(e){ return 'asc'; } })();
+let editingRsvId = null, rsvAnytime = false, isSavingRsv = false;
+
+function ymdToDate(s){ const p = s.split('-').map(Number); return new Date(p[0], p[1]-1, p[2]); }
+function fmtRsvDate(s){
+  const d = ymdToDate(s);
+  const yr = d.getFullYear() !== new Date().getFullYear() ? d.getFullYear()+'年' : '';
+  return `${yr}${d.getMonth()+1}月${d.getDate()}日 (週${DOW[d.getDay()]})`;
+}
+function rsvCountdown(s){
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diff = Math.round((ymdToDate(s) - today) / 86400000);
+  if(diff === 0) return { text:'今天', cls:'soon' };
+  if(diff > 0) return { text:`還有 ${diff} 天`, cls: diff <= 7 ? 'soon' : '' };
+  return { text:`已逾期 ${-diff} 天`, cls:'late' };
+}
+// Accepts several URLs separated by spaces / new lines; ignores anything that isn't link-like.
+function parseUrls(str){
+  return String(str||'').split(/\s+/)
+    .map(s => s.trim().replace(/[,，;；]+$/, ''))
+    .filter(s => /^(https?:\/\/)?[^\s\/]+\.[^\s]+/i.test(s));
+}
+function encUrl(u){ return encodeURIComponent(u).replace(/'/g, '%27'); }
+
+function renderReservations(){
+  const tabs = document.getElementById('rsv-tabs');
+  const wrap = document.getElementById('rsv-list');
+  if(!tabs || !wrap) return;
+  const total = reservations.length;
+  const doneN = reservations.filter(r=>r.done).length;
+  const todoN = total - doneN;
+  tabs.innerHTML =
+    [['todo',`未完成 (${todoN})`],['done',`已完成 (${doneN})`],['all',`全部 (${total})`]]
+      .map(([k,l]) => `<div class="chip ${rsvFilter===k?'active':''}" onclick="setRsvFilter('${k}')">${l}</div>`).join('')
+    + `<div class="chip" onclick="toggleRsvSort()">${rsvSortDir==='asc' ? '↑ 最早優先' : '↓ 最晚優先'}</div>`;
+
+  const items = reservations.filter(r => rsvFilter==='all' ? true : rsvFilter==='done' ? r.done : !r.done);
+  if(items.length === 0){
+    let msg = '還沒有預約提醒<br>點右上角「+ 新增預約」';
+    if(total > 0 && rsvFilter==='todo') msg = '🎉 全部都預約完成了';
+    if(total > 0 && rsvFilter==='done') msg = '還沒有完成的項目';
+    wrap.innerHTML = `<div class="empty-state"><div class="em">🔔</div><div class="t">${msg}</div></div>`;
+    return;
+  }
+
+  // group by the date the booking opens; "anytime" (no date) always goes last
+  const groups = {};
+  items.forEach(r => { const k = r.openDate || 'anytime'; (groups[k] = groups[k] || []).push(r); });
+  let keys = Object.keys(groups).filter(k => k !== 'anytime').sort();
+  if(rsvSortDir === 'desc') keys.reverse();
+  if(groups['anytime']) keys.push('anytime');
+
+  wrap.innerHTML = keys.map(k => {
+    const list = groups[k].slice().sort((a,b) => (a.openTime||'99:99').localeCompare(b.openTime||'99:99'));
+    let head;
+    if(k === 'anytime'){
+      head = `<span>🕐 隨時可預約</span>`;
+    } else {
+      const allDone = list.every(r => r.done);
+      const c = allDone ? { text:'✓ 已完成', cls:'fin' } : rsvCountdown(k);
+      head = `<span>📅 ${fmtRsvDate(k)}</span><span class="rsv-count ${c.cls}">${c.text}</span>`;
+    }
+    const rows = list.map(r => {
+      const urls = parseUrls(r.url);
+      const links = urls.map((u,i) =>
+        `<button class="icon-btn ${urls.length>1?'wide':''}" style="color:var(--navy);" onclick="openExternalLink('${encUrl(u)}')">🔗${urls.length>1 ? i+1 : ''}</button>`).join('');
+      const pills =
+        (r.openTime ? `<span class="rsv-pill">⏰ ${escapeHtml(r.openTime)} 開放</span>` : '') +
+        (r.slots ? `<span class="rsv-pill">🕒 ${escapeHtml(r.slots)}</span>` : '');
+      return `<div class="rsv-item">
+        <div class="checkbox ${r.done?'checked':''}" onclick="toggleReservation('${r.id}')">${r.done?'✓':''}</div>
+        <div class="rsv-body">
+          <div class="rsv-title ${r.done?'done':''}">${escapeHtml(r.title||'')}</div>
+          ${pills ? `<div class="rsv-meta">${pills}</div>` : ''}
+          ${r.alt ? `<div class="rsv-alt">💡 備選：${escapeHtml(r.alt)}</div>` : ''}
+        </div>
+        <div class="rsv-actions">${links}<button class="icon-btn edit" onclick="editReserve('${r.id}')">✎</button></div>
+      </div>`;
+    }).join('');
+    return `<div class="rsv-group"><div class="rsv-group-head">${head}</div>${rows}</div>`;
+  }).join('');
+}
+
+function setRsvFilter(k){ rsvFilter = k; try{ localStorage.setItem('rsvFilter', k); }catch(e){} renderReservations(); }
+function toggleRsvSort(){ rsvSortDir = rsvSortDir==='asc' ? 'desc' : 'asc'; try{ localStorage.setItem('rsvSortDir', rsvSortDir); }catch(e){} renderReservations(); }
+
+function setReserveAnytime(on){
+  rsvAnytime = on;
+  document.getElementById('r-anytime').classList.toggle('sel', on);
+  const d = document.getElementById('r-date'), t = document.getElementById('r-time');
+  d.disabled = on; t.disabled = on;
+  if(on){ d.value = ''; t.value = ''; }
+}
+function toggleReserveAnytime(){ setReserveAnytime(!rsvAnytime); }
+
+function openReserveModal(){
+  editingRsvId = null;
+  document.getElementById('rsv-modal-title').textContent = '新增預約提醒';
+  ['r-date','r-time','r-title','r-slots','r-url','r-alt'].forEach(id => document.getElementById(id).value = '');
+  setReserveAnytime(false);
+  document.getElementById('rsv-delete-btn').style.display = 'none';
+  document.getElementById('rsv-overlay').classList.add('show');
+}
+function editReserve(id){
+  const r = reservations.find(x => x.id === id); if(!r) return;
+  editingRsvId = id;
+  document.getElementById('rsv-modal-title').textContent = '編輯預約提醒';
+  document.getElementById('r-date').value = r.openDate || '';
+  document.getElementById('r-time').value = r.openTime || '';
+  document.getElementById('r-title').value = r.title || '';
+  document.getElementById('r-slots').value = r.slots || '';
+  document.getElementById('r-url').value = r.url || '';
+  document.getElementById('r-alt').value = r.alt || '';
+  setReserveAnytime(!r.openDate);
+  document.getElementById('rsv-delete-btn').style.display = 'flex';
+  document.getElementById('rsv-overlay').classList.add('show');
+}
+async function saveReserve(){
+  if(isSavingRsv) return; isSavingRsv = true;
+  const btn = document.getElementById('rsv-save-btn'); if(btn) btn.disabled = true;
+  try{
+    const title = document.getElementById('r-title').value.trim();
+    if(!title){ alert('請輸入預約項目'); return; }
+    const openDate = rsvAnytime ? '' : document.getElementById('r-date').value;
+    if(!rsvAnytime && !openDate){ alert('請選擇可預約日期，或選擇「隨時可預約」'); return; }
+    const data = {
+      openDate,
+      openTime: rsvAnytime ? '' : document.getElementById('r-time').value,
+      title,
+      slots: document.getElementById('r-slots').value.trim(),
+      url: document.getElementById('r-url').value.trim(),
+      alt: document.getElementById('r-alt').value.trim()
+    };
+    let addedNew = false, idx = -1, snapshot = null;
+    if(editingRsvId){
+      idx = reservations.findIndex(x => x.id === editingRsvId);
+      if(idx > -1){ snapshot = {...reservations[idx]}; reservations[idx] = {...reservations[idx], ...data}; }
+    } else {
+      reservations.push({ id:'r'+Date.now(), done:false, ...data });
+      addedNew = true;
+    }
+    const ok = await saveReservations();
+    if(ok){ closeModal('rsv-overlay'); renderReservations(); }
+    else{
+      if(addedNew) reservations.pop();
+      else if(idx > -1 && snapshot) reservations[idx] = snapshot;
+      showToast('儲存失敗，請重試一次');
+    }
+  } finally { isSavingRsv = false; if(btn) btn.disabled = false; }
+}
+async function toggleReservation(id){
+  const r = reservations.find(x => x.id === id); if(!r) return;
+  r.done = !r.done;
+  const ok = await saveReservations();
+  if(!ok){ r.done = !r.done; showToast('更新失敗，請重試'); }
+  renderReservations();
+}
+async function deleteReservation(id){
+  const removed = reservations.find(x => x.id === id);
+  reservations = reservations.filter(x => x.id !== id);
+  const ok = await saveReservations();
+  if(!ok && removed){ reservations.push(removed); showToast('刪除失敗，請重試一次'); }
+  renderReservations();
+}
+async function deleteReserveFromModal(){
+  if(!editingRsvId) return;
+  if(!confirm('確定要刪除這個預約提醒嗎？')) return;
+  const id = editingRsvId;
+  closeModal('rsv-overlay');
+  await deleteReservation(id);
+}
+
 /* ---------- init & refresh ---------- */
 function renderEverything(){
   renderDayTabs(); renderTimeline();
   renderBuyTabs(); renderBuyLocationTabs(); renderBuyList();
+  renderReservations();
   renderExpenses();
 }
 function anyModalOpen(){
