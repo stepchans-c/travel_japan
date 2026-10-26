@@ -393,15 +393,21 @@
 
 <script>
 /* ---------- date range ---------- */
-const TRIP_START = new Date(2024,11,29);
-const TRIP_END = new Date(2025,0,9);
+const TRIP_START = new Date(2026,11,29);
+const TRIP_END = new Date(2027,0,9);
 const DOW = ['日','一','二','三','四','五','六'];
+// The trip used to be built on 2024/25 dates by mistake. Map any old day key to the real 2026/27 one.
+function shiftTripYear(key){
+  if(/^2024-12-(29|30|31)$/.test(key)) return '2026' + key.slice(4);
+  if(/^2025-01-0[1-9]$/.test(key)) return '2027' + key.slice(4);
+  return key;
+}
 function fmtKey(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function buildDays(){ const days=[]; let cur=new Date(TRIP_START); while(cur<=TRIP_END){ days.push(new Date(cur)); cur.setDate(cur.getDate()+1); } return days; }
 const TRIP_DAYS = buildDays();
 let currentDayKey = (function(){
   try{
-    const saved = localStorage.getItem('lastDayKey');
+    const saved = shiftTripYear(localStorage.getItem('lastDayKey') || '');
     if(saved && TRIP_DAYS.some(d=>fmtKey(d)===saved)) return saved;
   }catch(e){}
   return fmtKey(TRIP_DAYS[0]);
@@ -527,6 +533,21 @@ function deleteImageBestEffort(ref){
   }).catch(()=>{ /* non-critical, ignore */ });
 }
 
+// One-time, idempotent: move itinerary items saved under the old 2024/25 day keys onto the 2026/27 ones.
+// Merges (never overwrites) if both old and new keys exist. Does nothing once everything has moved.
+async function migrateItineraryYear(){
+  if(!dataLoadOk) return;
+  const keys = Object.keys(itinerary);
+  if(!keys.some(k => shiftTripYear(k) !== k)) return;
+  const migrated = {};
+  keys.forEach(k => {
+    const nk = shiftTripYear(k);
+    migrated[nk] = (migrated[nk] || []).concat(itinerary[k] || []);
+  });
+  itinerary = migrated;
+  await saveItinerary(); // if this fails, the remote is unchanged and the next load simply tries again
+}
+
 async function loadAll(){
   dataLoadOk = false;
   let gist;
@@ -550,6 +571,7 @@ async function loadAll(){
       if(typeof CAT[kind] !== 'object' || CAT[kind] === null || Array.isArray(CAT[kind])) CAT[kind] = {...DEFAULTS[kind]};
     });
     dataLoadOk = true;
+    await migrateItineraryYear();
   }catch(e){
     console.error('loadAll failed', e);
     showToast('資料載入失敗，已暫停儲存功能以保護現有資料，請重新整理再試');
