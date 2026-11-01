@@ -172,6 +172,8 @@
   .primary-btn{ width:100%; background:var(--navy); color:#fff; border:none; border-radius:12px; padding:12px; font-weight:700; font-size:14px; cursor:pointer; }
 
   h1,h2,h3,p{ margin:0; }
+  .item-book{ font-size:12px; color:var(--ink); margin-top:4px; line-height:1.45; white-space:pre-line; overflow-wrap:break-word; word-break:break-word; }
+  .book-tag{ display:inline-block; background:#E3A33B; color:#2A1A00; font-size:10.5px; font-weight:700; padding:1px 7px; border-radius:8px; margin-right:6px; line-height:1.4; white-space:normal; }
   .rsv-group{ padding:0 18px; margin-bottom:4px; }
   .rsv-group-head{ display:flex; align-items:center; justify-content:space-between; padding:10px 2px 7px; font-size:13px; font-weight:700; }
   .rsv-count{ font-size:11px; font-weight:700; padding:2px 9px; border-radius:12px; background:var(--surface2); color:var(--ink-soft); }
@@ -273,6 +275,7 @@
           <button class="remove-img" id="img-remove" style="display:none;" onclick="removeImage()">移除照片</button>
         </div>
       </div>
+      <div class="field"><label>日期</label><input type="date" id="f-date"></div>
       <div class="row2">
         <div class="field"><label>開始時間</label><input type="time" id="f-time"></div>
         <div class="field"><label>結束時間 (選填)</label><input type="time" id="f-endtime"></div>
@@ -282,6 +285,7 @@
       <div class="field"><label>地圖代碼 (選填)</label><input type="text" id="f-mapcode" placeholder="例如 123-456 789*01"></div>
       <div class="field"><label>Google Map 連結 (選填)</label><input type="text" id="f-maplink" placeholder="例如 https://maps.app.goo.gl/xxxx"></div>
       <div class="field"><label>描述</label><textarea id="f-desc" placeholder="簡短描述這個行程..."></textarea></div>
+      <div class="field"><label>預約詳情 (選填)</label><textarea id="f-booking" placeholder="例如 預約人、確認編號、預約時間…"></textarea></div>
     </div>
     <div class="sheet-footer"><button class="primary-btn" id="item-save-btn" onclick="saveItem()">儲存</button></div>
   </div>
@@ -639,6 +643,7 @@ function renderTimeline(){
           <div class="item-body">
             <div class="item-title">${escapeHtml(it.title||'未命名')}</div>
             ${it.desc?`<div class="item-desc">${escapeHtml(it.desc)}</div>`:''}
+            ${it.booking?`<div class="item-book"><span class="book-tag">預約</span>${escapeHtml(it.booking)}</div>`:''}
             ${it.mapcode?`<div class="item-meta"><span class="duration-pill">🗺 ${escapeHtml(it.mapcode)}</span></div>`:''}
           </div>
         </div>
@@ -694,10 +699,18 @@ function renderItemTypeGrid(){
   manage.onclick = ()=> openCatManager('itin');
   wrap.appendChild(manage);
 }
+// The date box only allows days inside the trip (the tabs only exist for those days).
+function setItemDateField(key){
+  const el = document.getElementById('f-date');
+  el.min = fmtKey(TRIP_DAYS[0]);
+  el.max = fmtKey(TRIP_DAYS[TRIP_DAYS.length-1]);
+  el.value = key;
+}
 function openItemModal(){
   editingItemId = null; editingDayKey = currentDayKey; currentItemType = Object.keys(CAT.itin)[0]||'attraction'; tempImageData = null; tempImageChanged = false;
   document.getElementById('f-time').value=''; document.getElementById('f-endtime').value='';
-  document.getElementById('f-title').value=''; document.getElementById('f-mapcode').value=''; document.getElementById('f-maplink').value=''; document.getElementById('f-desc').value='';
+  document.getElementById('f-title').value=''; document.getElementById('f-mapcode').value=''; document.getElementById('f-maplink').value=''; document.getElementById('f-desc').value=''; document.getElementById('f-booking').value='';
+  setItemDateField(currentDayKey);
   document.getElementById('item-delete-btn').style.display = 'none';
   resetImageThumb();
   renderItemTypeGrid();
@@ -708,7 +721,8 @@ function editItem(id){
   editingItemId = id; editingDayKey = currentDayKey; currentItemType = it.type||'attraction';
   tempImageData = (it.imageRef && imageCache[it.imageRef]) || null; tempImageChanged = false;
   document.getElementById('f-time').value = it.time||''; document.getElementById('f-endtime').value = it.endTime||'';
-  document.getElementById('f-title').value = it.title||''; document.getElementById('f-mapcode').value = it.mapcode||''; document.getElementById('f-maplink').value = it.maplink||''; document.getElementById('f-desc').value = it.desc||'';
+  document.getElementById('f-title').value = it.title||''; document.getElementById('f-mapcode').value = it.mapcode||''; document.getElementById('f-maplink').value = it.maplink||''; document.getElementById('f-desc').value = it.desc||''; document.getElementById('f-booking').value = it.booking||'';
+  setItemDateField(currentDayKey);
   document.getElementById('item-delete-btn').style.display = 'flex';
   resetImageThumb();
   renderItemTypeGrid();
@@ -728,6 +742,8 @@ async function saveItem(){
   try{
     const title = document.getElementById('f-title').value.trim();
     if(!title){ alert('請輸入標題'); return; }
+    const newKey = document.getElementById('f-date').value;
+    if(!newKey || !TRIP_DAYS.some(d => fmtKey(d) === newKey)){ alert('請選擇行程日期（' + (TRIP_START.getMonth()+1) + '/' + TRIP_START.getDate() + ' – ' + (TRIP_END.getMonth()+1) + '/' + TRIP_END.getDate() + ' 之間）'); return; }
     const existing = editingItemId ? (itinerary[editingDayKey]||[]).find(x=>x.id===editingItemId) : null;
     const oldImageRef = existing ? existing.imageRef : null;
     let imageRef = oldImageRef;
@@ -743,21 +759,38 @@ async function saveItem(){
         if(oldImageRef) deleteImageBestEffort(oldImageRef);
       }
     }
-    const data = { time: document.getElementById('f-time').value, endTime: document.getElementById('f-endtime').value, type: currentItemType, title, mapcode: document.getElementById('f-mapcode').value.trim(), maplink: document.getElementById('f-maplink').value.trim(), desc: document.getElementById('f-desc').value.trim(), imageRef };
-    if(!itinerary[editingDayKey]) itinerary[editingDayKey] = [];
-    let addedNew = false, targetIdx = -1, previousSnapshot = null;
+    const data = { time: document.getElementById('f-time').value, endTime: document.getElementById('f-endtime').value, type: currentItemType, title, mapcode: document.getElementById('f-mapcode').value.trim(), maplink: document.getElementById('f-maplink').value.trim(), desc: document.getElementById('f-desc').value.trim(), booking: document.getElementById('f-booking').value.trim(), imageRef };
+    const oldKey = editingDayKey;
+    let addedNew = false, oldIdx = -1, prevItem = null;
     if(editingItemId){
-      targetIdx = itinerary[editingDayKey].findIndex(x=>x.id===editingItemId);
-      if(targetIdx>-1){ previousSnapshot = {...itinerary[editingDayKey][targetIdx]}; itinerary[editingDayKey][targetIdx] = {...itinerary[editingDayKey][targetIdx], ...data}; }
+      oldIdx = (itinerary[oldKey]||[]).findIndex(x=>x.id===editingItemId);
+      if(oldIdx > -1){
+        prevItem = {...itinerary[oldKey][oldIdx]};
+        if(newKey === oldKey){
+          itinerary[oldKey][oldIdx] = {...prevItem, ...data};
+        } else { // moved to another day
+          itinerary[oldKey].splice(oldIdx, 1);
+          (itinerary[newKey] = itinerary[newKey] || []).push({...prevItem, ...data});
+        }
+      }
     } else {
-      itinerary[editingDayKey].push({ id:'i'+Date.now(), ...data });
+      (itinerary[newKey] = itinerary[newKey] || []).push({ id:'i'+Date.now(), ...data });
       addedNew = true;
     }
     const ok = await saveItinerary();
-    if(ok){ closeModal('item-overlay'); renderDayTabs(); renderTimeline(); }
-    else{
-      if(addedNew){ itinerary[editingDayKey].pop(); }
-      else if(targetIdx>-1 && previousSnapshot){ itinerary[editingDayKey][targetIdx] = previousSnapshot; }
+    if(ok){
+      closeModal('item-overlay');
+      if(newKey !== currentDayKey){ // follow the item to its day so you can see it
+        currentDayKey = newKey;
+        try{ localStorage.setItem('lastDayKey', newKey); }catch(e){}
+      }
+      renderDayTabs(); renderTimeline();
+    } else {
+      if(addedNew){ itinerary[newKey].pop(); }
+      else if(oldIdx > -1 && prevItem){
+        if(newKey === oldKey){ itinerary[oldKey][oldIdx] = prevItem; }
+        else { itinerary[newKey].pop(); itinerary[oldKey].splice(oldIdx, 0, prevItem); }
+      }
       showToast('儲存失敗，請重試一次');
     }
   } finally { isSavingItem = false; if(btn) btn.disabled = false; }
