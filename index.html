@@ -59,7 +59,7 @@
   .item-rail .line{ width:2px; flex:1; background:var(--line); margin-top:4px; }
   .card{ background:var(--card); border-radius:14px; box-shadow:var(--shadow); padding:10px 12px; margin-bottom:9px; flex:1; position:relative; }
   .item-main{ display:flex; gap:10px; }
-  .item-media{ width:48px; height:48px; border-radius:11px; flex:0 0 48px; overflow:hidden; display:flex; align-items:center; justify-content:center; font-size:18px; }
+  .item-media{ width:48px; height:48px; border-radius:11px; flex:0 0 48px; overflow:hidden; display:flex; align-items:center; justify-content:center; font-size:18px; cursor:pointer; }
   .item-media img{ width:100%; height:100%; object-fit:cover; }
   .item-body{ flex:1; min-width:0; padding-right:66px; }
   .item-title{ font-size:14.5px; font-weight:700; overflow-wrap:break-word; word-break:break-word; }
@@ -137,6 +137,11 @@
   .sheet-head .cancel{ color:var(--ink-soft); background:none; border:none; font-size:14px; }
   .sheet-head .save{ color:var(--navy); background:none; border:none; font-size:14px; font-weight:800; }
   .sheet-head .title{ font-size:15px; font-weight:800; }
+  .sheet-head .title{ flex:1; min-width:0; }
+  .close-x{ flex:0 0 auto; width:30px; height:30px; border-radius:50%; border:none; background:rgba(255,255,255,0.18); color:#fff; font-size:14px; line-height:1; display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0; }
+  .sheet-footer{ display:flex; align-items:center; }
+  .sheet-footer .primary-btn{ flex:1; width:auto; }
+  .footer-del{ flex:0 0 46px; height:44px; margin-right:10px; border-radius:12px; border:1.5px solid rgba(255,160,140,0.65); background:rgba(178,74,59,0.28); color:#FFC2B6; font-size:15px; align-items:center; justify-content:center; cursor:pointer; padding:0; }
   .sheet-body{ flex:1 1 auto; overflow-y:auto; padding:0 18px 10px; -webkit-overflow-scrolling:touch; }
   .sheet-footer{ flex:0 0 auto; padding:10px 18px calc(10px + env(safe-area-inset-bottom)); border-top:1px solid var(--line); background:var(--sheet-bg); }
   .field{ margin-bottom:11px; }
@@ -173,6 +178,7 @@
 
   h1,h2,h3,p{ margin:0; }
   .item-book{ font-size:12px; color:var(--ink); margin-top:4px; line-height:1.45; white-space:pre-line; overflow-wrap:break-word; word-break:break-word; }
+  .item-book + .item-desc{ margin-top:4px; }
   .book-tag{ display:inline-block; background:#E3A33B; color:#2A1A00; font-size:10.5px; font-weight:700; padding:1px 7px; border-radius:8px; margin-right:6px; line-height:1.4; white-space:normal; }
   .rsv-group{ padding:0 18px; margin-bottom:4px; }
   .rsv-group-head{ display:flex; align-items:center; justify-content:space-between; padding:10px 2px 7px; font-size:13px; font-weight:700; }
@@ -262,9 +268,8 @@
 <div class="overlay" id="item-overlay">
   <div class="sheet">
     <div class="sheet-head">
-      <button class="cancel" onclick="closeModal('item-overlay')">取消</button>
       <div class="title">行程項目</div>
-      <button class="icon-btn del" id="item-delete-btn" style="display:none;" onclick="deleteItemFromModal()">🗑</button>
+      <button class="close-x" aria-label="關閉" onclick="closeModal('item-overlay')">✕</button>
     </div>
     <div class="sheet-body">
       <div class="field">
@@ -284,10 +289,10 @@
       <div class="field"><label>標題</label><input type="text" id="f-title" placeholder="景點 / 餐廳名稱"></div>
       <div class="field"><label>地圖代碼 (選填)</label><input type="text" id="f-mapcode" placeholder="例如 123-456 789*01"></div>
       <div class="field"><label>Google Map 連結 (選填)</label><input type="text" id="f-maplink" placeholder="例如 https://maps.app.goo.gl/xxxx"></div>
-      <div class="field"><label>描述</label><textarea id="f-desc" placeholder="簡短描述這個行程..."></textarea></div>
       <div class="field"><label>預約詳情 (選填)</label><textarea id="f-booking" placeholder="例如 預約人、確認編號、預約時間…"></textarea></div>
+      <div class="field"><label>描述</label><textarea id="f-desc" placeholder="簡短描述這個行程..."></textarea></div>
     </div>
-    <div class="sheet-footer"><button class="primary-btn" id="item-save-btn" onclick="saveItem()">儲存</button></div>
+    <div class="sheet-footer"><button class="footer-del" id="item-delete-btn" style="display:none;" aria-label="刪除" onclick="deleteItemFromModal()">🗑</button><button class="primary-btn" id="item-save-btn" onclick="saveItem()">儲存</button></div>
   </div>
 </div>
 
@@ -295,9 +300,8 @@
 <div class="overlay" id="buy-overlay">
   <div class="sheet">
     <div class="sheet-head">
-      <button class="cancel" onclick="closeModal('buy-overlay')">取消</button>
       <div class="title" id="buy-modal-title">新增購買項目</div>
-      <button class="icon-btn del" id="buy-delete-btn" style="display:none;" onclick="deleteBuyFromModal()">🗑</button>
+      <button class="close-x" aria-label="關閉" onclick="closeModal('buy-overlay')">✕</button>
     </div>
     <div class="sheet-body">
       <div class="field">
@@ -320,7 +324,7 @@
       <div class="field"><label>網址 (選填)</label><input type="text" id="b-link" placeholder="例如 https://example.com"></div>
       <div class="field"><label>分類</label><div class="type-grid" id="buy-cat-grid"></div></div>
     </div>
-    <div class="sheet-footer"><button class="primary-btn" onclick="saveBuyItem()">儲存</button></div>
+    <div class="sheet-footer"><button class="footer-del" id="buy-delete-btn" style="display:none;" aria-label="刪除" onclick="deleteBuyFromModal()">🗑</button><button class="primary-btn" onclick="saveBuyItem()">儲存</button></div>
   </div>
 </div>
 
@@ -328,9 +332,8 @@
 <div class="overlay" id="rsv-overlay">
   <div class="sheet">
     <div class="sheet-head">
-      <button class="cancel" onclick="closeModal('rsv-overlay')">取消</button>
       <div class="title" id="rsv-modal-title">新增預約提醒</div>
-      <button class="icon-btn del" id="rsv-delete-btn" style="display:none;" onclick="deleteReserveFromModal()">🗑</button>
+      <button class="close-x" aria-label="關閉" onclick="closeModal('rsv-overlay')">✕</button>
     </div>
     <div class="sheet-body">
       <div class="row2">
@@ -343,7 +346,7 @@
       <div class="field"><label>網址 (可輸入多個，每行一個)</label><textarea id="r-url" placeholder="https://..."></textarea></div>
       <div class="field"><label>備選餐廳 (選填)</label><input type="text" id="r-alt" placeholder="例如 備案餐廳名稱"></div>
     </div>
-    <div class="sheet-footer"><button class="primary-btn" id="rsv-save-btn" onclick="saveReserve()">儲存</button></div>
+    <div class="sheet-footer"><button class="footer-del" id="rsv-delete-btn" style="display:none;" aria-label="刪除" onclick="deleteReserveFromModal()">🗑</button><button class="primary-btn" id="rsv-save-btn" onclick="saveReserve()">儲存</button></div>
   </div>
 </div>
 
@@ -351,9 +354,8 @@
 <div class="overlay" id="exp-overlay">
   <div class="sheet">
     <div class="sheet-head">
-      <button class="cancel" onclick="closeModal('exp-overlay')">取消</button>
       <div class="title">新增支出</div>
-      <div style="width:34px;"></div>
+      <button class="close-x" aria-label="關閉" onclick="closeModal('exp-overlay')">✕</button>
     </div>
     <div class="sheet-body">
       <div class="row2">
@@ -379,9 +381,8 @@
 <div class="overlay" id="cat-overlay">
   <div class="sheet">
     <div class="sheet-head">
-      <button class="cancel" onclick="closeCatManager()">關閉</button>
       <div class="title" id="cat-modal-title">管理分類</div>
-      <div style="width:36px;"></div>
+      <button class="close-x" aria-label="關閉" onclick="closeCatManager()">✕</button>
     </div>
     <div class="sheet-body">
       <div id="cat-list"></div>
@@ -639,11 +640,11 @@ function renderTimeline(){
         ${it.maplink?`<button class="map-pin" onclick="openMap('${encodeURIComponent(it.maplink)}')" style="right:8px;">📍</button>`:''}
         <button class="edit-pin" onclick="editItem('${it.id}')" style="right:${it.maplink?'38px':'8px'};">✎</button>
         <div class="item-main">
-          ${hasImage?`<div class="item-media" style="background:${meta.color}22;color:${meta.color}"><img src="${imageCache[it.imageRef]}" alt=""></div>`:''}
+          ${hasImage?`<div class="item-media" style="background:${meta.color}22;color:${meta.color}" onclick="openLightbox('${it.imageRef}')"><img src="${imageCache[it.imageRef]}" alt=""></div>`:''}
           <div class="item-body">
             <div class="item-title">${escapeHtml(it.title||'未命名')}</div>
-            ${it.desc?`<div class="item-desc">${escapeHtml(it.desc)}</div>`:''}
             ${it.booking?`<div class="item-book"><span class="book-tag">預約</span>${escapeHtml(it.booking)}</div>`:''}
+            ${it.desc?`<div class="item-desc">${escapeHtml(it.desc)}</div>`:''}
             ${it.mapcode?`<div class="item-meta"><span class="duration-pill">🗺 ${escapeHtml(it.mapcode)}</span></div>`:''}
           </div>
         </div>
