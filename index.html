@@ -177,6 +177,20 @@
   .primary-btn{ width:100%; background:var(--navy); color:#fff; border:none; border-radius:12px; padding:12px; font-weight:700; font-size:14px; cursor:pointer; }
 
   h1,h2,h3,p{ margin:0; }
+  .bud-types{ margin-top:12px; }
+  .bud-pill{ display:inline-block; font-size:11.5px; color:var(--ink); background:var(--surface2); padding:3px 9px; border-radius:12px; margin:0 6px 6px 0; }
+  .bud-actual{ font-size:11.5px; color:var(--ink-soft); }
+  .bud-day{ padding:0 18px; margin-bottom:6px; }
+  .bud-day-head{ display:flex; align-items:center; justify-content:space-between; padding:10px 2px 7px; font-size:13px; font-weight:700; }
+  .bud-day-sum{ font-size:12px; font-weight:700; color:var(--ink); background:var(--surface2); padding:2px 10px; border-radius:12px; }
+  .bud-row{ display:flex; align-items:center; background:var(--card); border-radius:12px; padding:8px 10px; margin-bottom:6px; box-shadow:var(--shadow); }
+  .bud-ic{ flex:0 0 30px; width:30px; height:30px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:14px; margin-right:10px; }
+  .bud-info{ flex:1; min-width:0; }
+  .bud-title{ font-size:13.5px; font-weight:600; line-height:1.35; overflow-wrap:break-word; word-break:break-word; }
+  .bud-time{ font-size:10.5px; color:var(--ink-soft); margin-top:1px; }
+  .bud-amt{ flex:0 0 auto; display:flex; align-items:center; margin-left:8px; }
+  .bud-amt span{ color:var(--ink-soft); font-size:13px; margin-right:4px; }
+  .bud-input{ width:92px; border:1px solid var(--line); background:var(--bg); color:var(--ink); border-radius:10px; padding:8px; font-size:16px; text-align:right; font-family:inherit; }
   .item-book{ font-size:12px; color:var(--ink); margin-top:4px; line-height:1.45; white-space:pre-line; overflow-wrap:break-word; word-break:break-word; }
   .item-book + .item-desc{ margin-top:4px; }
   .book-tag{ display:inline-block; background:#E3A33B; color:#2A1A00; font-size:10.5px; font-weight:700; padding:1px 7px; border-radius:8px; margin-right:6px; line-height:1.4; white-space:normal; }
@@ -242,7 +256,9 @@
   </div>
 
   <div id="page-expenses" class="page" style="display:none;">
-    <div class="section-header"><h1>支出總覽</h1><button class="add-link" onclick="openExpenseModal()">+ 新增支出</button></div>
+    <div class="section-header"><h1 id="exp-title">支出總覽</h1><button class="add-link" id="exp-add-btn" onclick="openExpenseModal()">+ 新增支出</button></div>
+    <div class="tabs-row" id="exp-view-tabs"></div>
+    <div id="exp-actual">
     <div class="summary-card">
       <div class="summary-top">
         <div class="summary-total"><div class="lbl">總支出</div><div class="val" id="exp-total">¥0</div></div>
@@ -252,6 +268,8 @@
     </div>
     <div class="list-header">交易紀錄</div>
     <div id="exp-list"></div>
+    </div>
+    <div id="exp-budget" style="display:none;"></div>
   </div>
 
   <div class="fab" id="itin-fab" onclick="openItemModal()">+</div>
@@ -428,7 +446,7 @@ const EMOJI_LIST = ['📍','🍽️','🍰','🛍️','🚆','🎫','💳','⛩�
 const COLOR_SWATCH = ['#4A6FA5','#D9694F','#8A6BB8','#5B9279','#C99A3A','#3B4A68','#9CA3AF','#B24A3B'];
 
 let CAT = { itin:{}, buy:{}, exp:{} };
-let itinerary = {}, buyList = [], expenses = [], reservations = [];
+let itinerary = {}, buyList = [], expenses = [], reservations = [], budget = {}, budPending = 0;
 let editingItemId = null, editingDayKey = null, currentItemType = 'attraction', tempImageData = null, tempImageChanged = false;
 let currentBuyTab = 'all', selectedBuyCat = 'essentials', selectedExpCat = 'food';
 let editingBuyId = null, tempBuyImageData = null, tempBuyImageChanged = false, currentLocationFilter = 'all';
@@ -554,7 +572,9 @@ async function migrateItineraryYear(){
 }
 
 async function loadAll(){
-  dataLoadOk = false;
+  // NB: dataLoadOk is deliberately NOT reset here. It starts false on page load and is only set false
+  // again if a load FAILS. Resetting it while a background refresh is merely in flight made any save
+  // tapped during those moments bounce with a "data not loaded" error.
   let gist;
   try{
     gist = await fetchGist();
@@ -566,6 +586,9 @@ async function loadAll(){
     buyList = await parseFile(gist, 'buy-list.json', []);
     expenses = await parseFile(gist, 'expenses.json', []);
     reservations = await parseFile(gist, 'reservations.json', []);
+    // budget: never replace the local copy while a save is in flight or a number is being typed
+    const remoteBudget = await parseFile(gist, 'budget.json', {});
+    if(budPending === 0 && !budInputFocused()) budget = (remoteBudget && typeof remoteBudget === 'object' && !Array.isArray(remoteBudget)) ? remoteBudget : {};
     await loadImageCacheFromGist(gist);
     // Guard against a file accidentally containing the wrong shape (e.g. {} instead of []).
     if(!Array.isArray(buyList)) buyList = [];
@@ -1317,12 +1340,133 @@ async function deleteReserveFromModal(){
   await deleteReservation(id);
 }
 
+/* ---------- BUDGET ESTIMATE (inside the 支出 tab) ----------
+   Amounts live in their own gist file (budget.json: { itemId: yen }), so typing numbers
+   never rewrites the itinerary data. */
+let expView = (function(){ try{ return localStorage.getItem('expView') === 'budget' ? 'budget' : 'actual'; }catch(e){ return 'actual'; } })();
+let budChain = Promise.resolve(), lastBudHtml = '';
+
+function fmtYen(n){ return '¥' + Math.round(n).toLocaleString(); }
+function budInputFocused(){ const a = document.activeElement; return !!(a && a.classList && a.classList.contains('bud-input')); }
+
+function budgetCompute(){
+  let total = 0, filled = 0, count = 0; const byDay = {}, byType = {};
+  TRIP_DAYS.forEach(day => {
+    const key = fmtKey(day);
+    (itinerary[key] || []).forEach(it => {
+      count++;
+      const v = Number(budget[it.id]) || 0;
+      if(v > 0){ filled++; total += v; byDay[key] = (byDay[key] || 0) + v; byType[it.type] = (byType[it.type] || 0) + v; }
+    });
+  });
+  return { total, filled, count, byDay, byType };
+}
+function budTypesHtml(c){
+  return Object.entries(c.byType).sort((a,b) => b[1] - a[1]).map(([t,v]) => {
+    const cat = getCat('itin', t);
+    return `<span class="bud-pill">${cat.icon} ${escapeHtml(cat.label)} ${fmtYen(v)}</span>`;
+  }).join('');
+}
+function budActualText(c){
+  const actual = expenses.reduce((s,e) => s + Number(e.amount || 0), 0);
+  if(!actual) return '';
+  const pct = c.total > 0 ? `（約佔預估 ${Math.round(actual / c.total * 100)}%）` : '';
+  return `實際已記錄 ${fmtYen(actual)}${pct}`;
+}
+function renderBudget(){
+  const wrap = document.getElementById('exp-budget'); if(!wrap) return;
+  const c = budgetCompute();
+  let html;
+  if(c.count === 0){
+    html = `<div class="empty-state"><div class="em">🧾</div><div class="t">行程裡面未有項目<br>先喺「行程」頁加入項目，呢度就會自動生成預算表</div></div>`;
+  } else {
+    html = `<div class="summary-card">
+      <div class="summary-top">
+        <div class="summary-total"><div class="lbl">預估總支出</div><div class="val" id="bud-total">${fmtYen(c.total)}</div></div>
+        <div class="summary-avg"><div class="lbl">已填寫</div><div class="val" id="bud-filled">${c.filled} / ${c.count}</div></div>
+      </div>
+      <div class="bud-types" id="bud-types">${budTypesHtml(c)}</div>
+      <div class="bud-actual" id="bud-actual">${budActualText(c)}</div>
+    </div>`;
+    TRIP_DAYS.forEach(day => {
+      const key = fmtKey(day);
+      const items = (itinerary[key] || []).slice().sort((a,b) => (a.time || '').localeCompare(b.time || ''));
+      if(!items.length) return;
+      html += `<div class="bud-day"><div class="bud-day-head"><span>📅 ${day.getMonth()+1}月${day.getDate()}日 (週${DOW[day.getDay()]})</span><span class="bud-day-sum" data-day="${key}">${fmtYen(c.byDay[key] || 0)}</span></div>`;
+      items.forEach(it => {
+        const cat = getCat('itin', it.type);
+        const v = Number(budget[it.id]) || 0;
+        html += `<div class="bud-row">
+          <div class="bud-ic" style="background:${cat.color}22;color:${cat.color}">${cat.icon}</div>
+          <div class="bud-info"><div class="bud-title">${escapeHtml(it.title || '未命名')}</div>${it.time ? `<div class="bud-time">${escapeHtml(it.time)}</div>` : ''}</div>
+          <div class="bud-amt"><span>¥</span><input class="bud-input" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="0" value="${v || ''}" data-id="${it.id}" data-prev="${v}" oninput="budInput(this)" onchange="budChange(this)"></div>
+        </div>`;
+      });
+      html += `</div>`;
+    });
+  }
+  if(html !== lastBudHtml){ wrap.innerHTML = html; lastBudHtml = html; }
+}
+function updateBudgetTotals(){
+  const c = budgetCompute();
+  const set = (id, txt) => { const el = document.getElementById(id); if(el) el.textContent = txt; };
+  set('bud-total', fmtYen(c.total)); set('bud-filled', `${c.filled} / ${c.count}`); set('bud-actual', budActualText(c));
+  const ty = document.getElementById('bud-types'); if(ty) ty.innerHTML = budTypesHtml(c);
+  document.querySelectorAll('.bud-day-sum').forEach(el => { el.textContent = fmtYen(c.byDay[el.dataset.day] || 0); });
+}
+function budInput(el){
+  // accept full-width digits and commas from CJK keyboards; keep digits only
+  const clean = el.value.replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0)).replace(/\D/g, '').slice(0, 9);
+  if(clean !== el.value) el.value = clean;
+  const v = clean === '' ? 0 : parseInt(clean, 10);
+  if(v > 0) budget[el.dataset.id] = v; else delete budget[el.dataset.id];
+  lastBudHtml = ''; // the screen now differs from the last full render
+  updateBudgetTotals();
+}
+// Saves run strictly one after another, so a slow earlier save can never overwrite a newer one.
+function saveBudget(){
+  budPending++;
+  const run = budChain.then(() => saveKey('budget.json', budget)).catch(() => false);
+  budChain = run;
+  return run.then(ok => { budPending--; return ok; });
+}
+async function budChange(el){
+  const id = el.dataset.id;
+  const prev = Number(el.dataset.prev || 0);
+  const cur = Number(budget[id]) || 0;
+  if(cur === prev) return;
+  const ok = await saveBudget();
+  if(ok){ el.dataset.prev = String(cur); return; }
+  if(prev > 0) budget[id] = prev; else delete budget[id];
+  el.value = prev > 0 ? String(prev) : '';
+  lastBudHtml = '';
+  updateBudgetTotals();
+  showToast('儲存失敗，已還原，請再試一次');
+}
+
+function renderExpTabs(){
+  const el = document.getElementById('exp-view-tabs'); if(!el) return;
+  el.innerHTML = [['actual','實際支出'],['budget','預算估算']]
+    .map(([k,l]) => `<div class="chip ${expView===k?'active':''}" onclick="setExpView('${k}')">${l}</div>`).join('');
+}
+function applyExpView(){
+  const b = expView === 'budget';
+  document.getElementById('exp-actual').style.display = b ? 'none' : 'block';
+  document.getElementById('exp-budget').style.display = b ? 'block' : 'none';
+  document.getElementById('exp-add-btn').style.display = b ? 'none' : '';
+  document.getElementById('exp-title').textContent = b ? '預算估算' : '支出總覽';
+  renderExpTabs();
+  if(b) renderBudget();
+}
+function setExpView(v){ expView = v; try{ localStorage.setItem('expView', v); }catch(e){} applyExpView(); }
+
 /* ---------- init & refresh ---------- */
 function renderEverything(){
   renderDayTabs(); renderTimeline();
   renderBuyTabs(); renderBuyLocationTabs(); renderBuyList();
   renderReservations();
   renderExpenses();
+  applyExpView();
 }
 function anyModalOpen(){
   return document.querySelectorAll('.overlay.show').length > 0;
@@ -1331,12 +1475,13 @@ let isRefreshing = false;
 async function refreshAll(silent){
   if(isRefreshing) return;
   if(anyModalOpen()) return; // don't yank data out from under someone mid-edit
+  if(budInputFocused()) return; // ...or wipe out a budget number that is being typed
   isRefreshing = true;
   const btn = document.getElementById('refresh-btn');
   if(!silent && btn) btn.textContent = '⏳';
   try{
     await loadAll();
-    renderEverything();
+    if(budInputFocused()) updateBudgetTotals(); else renderEverything();
   } finally {
     isRefreshing = false;
     if(!silent && btn) btn.textContent = '🔄';
