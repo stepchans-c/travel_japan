@@ -184,10 +184,22 @@
   .bud-day-head{ display:flex; align-items:center; justify-content:space-between; padding:10px 2px 7px; font-size:13px; font-weight:700; }
   .bud-day-sum{ font-size:12px; font-weight:700; color:var(--ink); background:var(--surface2); padding:2px 10px; border-radius:12px; }
   .bud-row{ display:flex; align-items:center; background:var(--card); border-radius:12px; padding:8px 10px; margin-bottom:6px; box-shadow:var(--shadow); }
-  .bud-ic{ flex:0 0 30px; width:30px; height:30px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:14px; margin-right:10px; }
   .bud-info{ flex:1; min-width:0; }
   .bud-title{ font-size:13.5px; font-weight:600; line-height:1.35; overflow-wrap:break-word; word-break:break-word; }
-  .bud-time{ font-size:10.5px; color:var(--ink-soft); margin-top:1px; }
+  .bud-sub{ margin-top:4px; }
+  .bud-time{ font-size:10.5px; color:var(--ink-soft); margin-right:8px; }
+  .bud-tag{ display:inline-block; font-size:10px; font-weight:700; color:#2A1A00; background:#E3A33B; border-radius:8px; padding:1px 6px; margin-right:8px; }
+  .pay-chip{ border:none; border-radius:10px; padding:2px 9px; font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .pay-chip.pre{ background:#2E7D5B; color:#E6FFF2; }
+  .pay-chip.later{ background:var(--surface2); color:var(--ink-soft); }
+  .bud-del{ flex:0 0 auto; width:24px; height:24px; margin-left:6px; border-radius:50%; border:none; background:transparent; color:var(--ink-soft); font-size:13px; cursor:pointer; padding:0; }
+  .bud-conv{ font-size:13px; font-weight:700; color:var(--ink); margin-top:10px; }
+  .bud-rate{ font-size:10.5px; color:var(--ink-soft); margin:2px 0 4px; }
+  .bud-hidden{ padding:6px 18px 14px; }
+  .bud-hidden-head{ font-size:12.5px; color:var(--ink-soft); padding:8px 2px; cursor:pointer; }
+  .bud-hidden-note{ font-size:11px; color:var(--ink-soft); margin:0 2px 6px; }
+  .bud-hidden-row{ display:flex; align-items:center; justify-content:space-between; background:var(--card); border-radius:10px; padding:8px 10px; margin-bottom:6px; font-size:13px; }
+  .pay-pick .toggle-chip{ margin-right:8px; }
   .bud-amt{ flex:0 0 auto; display:flex; align-items:center; margin-left:8px; }
   .bud-amt span{ color:var(--ink-soft); font-size:13px; margin-right:4px; }
   .bud-input{ width:92px; border:1px solid var(--line); background:var(--bg); color:var(--ink); border-radius:10px; padding:8px; font-size:16px; text-align:right; font-family:inherit; }
@@ -368,6 +380,24 @@
   </div>
 </div>
 
+<!-- BUDGET ITEM MODAL -->
+<div class="overlay" id="bud-overlay">
+  <div class="sheet">
+    <div class="sheet-head">
+      <div class="title">新增預算項目</div>
+      <button class="close-x" aria-label="關閉" onclick="closeModal('bud-overlay')">✕</button>
+    </div>
+    <div class="sheet-body">
+      <div class="field"><label>項目名稱</label><input type="text" id="bd-title" placeholder="例如 機票 / 酒店 / JR Pass"></div>
+      <div class="field"><label>預估金額 (¥，選填)</label><input type="text" id="bd-amount" inputmode="numeric" pattern="[0-9]*" placeholder="0" oninput="this.value=budClean(this.value)"></div>
+      <div class="field"><label>付款方式</label>
+        <div class="pay-pick"><div class="toggle-chip" id="bd-pay-pre" onclick="setBudEditPay('pre')">預付</div><div class="toggle-chip sel" id="bd-pay-later" onclick="setBudEditPay('later')">到時付</div></div>
+      </div>
+    </div>
+    <div class="sheet-footer"><button class="primary-btn" id="bd-save-btn" onclick="saveBudItem()">儲存</button></div>
+  </div>
+</div>
+
 <!-- EXPENSE MODAL -->
 <div class="overlay" id="exp-overlay">
   <div class="sheet">
@@ -446,7 +476,7 @@ const EMOJI_LIST = ['📍','🍽️','🍰','🛍️','🚆','🎫','💳','⛩�
 const COLOR_SWATCH = ['#4A6FA5','#D9694F','#8A6BB8','#5B9279','#C99A3A','#3B4A68','#9CA3AF','#B24A3B'];
 
 let CAT = { itin:{}, buy:{}, exp:{} };
-let itinerary = {}, buyList = [], expenses = [], reservations = [], budget = {}, budPending = 0;
+let itinerary = {}, buyList = [], expenses = [], reservations = [], budget = {}, budMeta = { pay:{}, hidden:{}, custom:[] }, budPending = 0;
 let editingItemId = null, editingDayKey = null, currentItemType = 'attraction', tempImageData = null, tempImageChanged = false;
 let currentBuyTab = 'all', selectedBuyCat = 'essentials', selectedExpCat = 'food';
 let editingBuyId = null, tempBuyImageData = null, tempBuyImageChanged = false, currentLocationFilter = 'all';
@@ -588,7 +618,8 @@ async function loadAll(){
     reservations = await parseFile(gist, 'reservations.json', []);
     // budget: never replace the local copy while a save is in flight or a number is being typed
     const remoteBudget = await parseFile(gist, 'budget.json', {});
-    if(budPending === 0 && !budInputFocused()) budget = (remoteBudget && typeof remoteBudget === 'object' && !Array.isArray(remoteBudget)) ? remoteBudget : {};
+    const remoteBudMeta = await parseFile(gist, 'budget-meta.json', {});
+    if(budPending === 0 && !budInputFocused()){ budget = normalizeBudget(remoteBudget); budMeta = normalizeBudMeta(remoteBudMeta); }
     await loadImageCacheFromGist(gist);
     // Guard against a file accidentally containing the wrong shape (e.g. {} instead of []).
     if(!Array.isArray(buyList)) buyList = [];
@@ -1341,107 +1372,246 @@ async function deleteReserveFromModal(){
 }
 
 /* ---------- BUDGET ESTIMATE (inside the 支出 tab) ----------
-   Amounts live in their own gist file (budget.json: { itemId: yen }), so typing numbers
-   never rewrites the itinerary data. */
+   budget.json      : { itemId: yen }  -> a key present means "filled in", even when it is 0
+   budget-meta.json : { pay:{id:'pre'}, hidden:{id:true}, custom:[{id,title}] }
+   Both are separate from itinerary.json, so typing numbers never rewrites the itinerary. */
+// Approximate exchange rates (late Oct 2026). Planning figures only; they are NOT updated automatically.
+const JPY_TO_CAD = 0.0087, JPY_TO_HKD = 0.0498;
+
 let expView = (function(){ try{ return localStorage.getItem('expView') === 'budget' ? 'budget' : 'actual'; }catch(e){ return 'actual'; } })();
-let budChain = Promise.resolve(), lastBudHtml = '';
+let budFilter = (function(){ try{ const v = localStorage.getItem('budFilter'); return (v === 'pre' || v === 'later') ? v : 'all'; }catch(e){ return 'all'; } })();
+let budChain = Promise.resolve(), lastBudHtml = '', budShowHidden = false, budEditPay = 'later', isSavingBud = false;
+
+function isObj(o){ return !!o && typeof o === 'object' && !Array.isArray(o); }
+function normalizeBudget(o){
+  const r = {};
+  if(isObj(o)) Object.keys(o).forEach(k => { const v = o[k]; if(typeof v === 'number' && isFinite(v) && v >= 0) r[k] = v; });
+  return r;
+}
+function normalizeBudMeta(o){
+  o = isObj(o) ? o : {};
+  return { pay: isObj(o.pay) ? o.pay : {}, hidden: isObj(o.hidden) ? o.hidden : {},
+           custom: Array.isArray(o.custom) ? o.custom.filter(c => c && typeof c.id === 'string' && typeof c.title === 'string') : [] };
+}
 
 function fmtYen(n){ return '¥' + Math.round(n).toLocaleString(); }
 function budInputFocused(){ const a = document.activeElement; return !!(a && a.classList && a.classList.contains('bud-input')); }
+function budPayOf(id){ return budMeta.pay[id] === 'pre' ? 'pre' : 'later'; }
+function budMatches(r){ return budFilter === 'all' || budPayOf(r.id) === budFilter; }
 
-function budgetCompute(){
-  let total = 0, filled = 0, count = 0; const byDay = {}, byType = {};
+// Every line of the budget: your own extra items first, then the itinerary items (minus the ones you removed).
+function budAllRows(){
+  const rows = [];
+  budMeta.custom.forEach(c => rows.push({ id:c.id, title:c.title, custom:true, group:'custom', type:'', time:'' }));
   TRIP_DAYS.forEach(day => {
     const key = fmtKey(day);
-    (itinerary[key] || []).forEach(it => {
-      count++;
-      const v = Number(budget[it.id]) || 0;
-      if(v > 0){ filled++; total += v; byDay[key] = (byDay[key] || 0) + v; byType[it.type] = (byType[it.type] || 0) + v; }
+    (itinerary[key] || []).slice().sort((a,b) => (a.time || '').localeCompare(b.time || '')).forEach(it => {
+      if(budMeta.hidden[it.id]) return;
+      rows.push({ id:it.id, title:it.title || '未命名', custom:false, group:key, type:it.type, time:it.time || '' });
     });
   });
-  return { total, filled, count, byDay, byType };
+  return rows;
+}
+function budHiddenItems(){
+  const out = [];
+  TRIP_DAYS.forEach(day => (itinerary[fmtKey(day)] || []).forEach(it => { if(budMeta.hidden[it.id]) out.push({ id:it.id, title:it.title || '未命名' }); }));
+  return out;
+}
+// Totals follow the filter: only the lines that match it are counted.
+function budgetCompute(){
+  const rows = budAllRows();
+  const shown = rows.filter(budMatches);
+  let total = 0, filled = 0; const byGroup = {}, byType = {};
+  shown.forEach(r => {
+    const v = budget[r.id];
+    if(v === undefined) return;
+    filled++; total += v;
+    byGroup[r.group] = (byGroup[r.group] || 0) + v;
+    if(v > 0){ const t = r.custom ? '' : r.type; byType[t] = (byType[t] || 0) + v; }
+  });
+  const nPre = rows.filter(r => budPayOf(r.id) === 'pre').length;
+  return { rows, shown, total, filled, count: shown.length, byGroup, byType, nAll: rows.length, nPre, nLater: rows.length - nPre };
 }
 function budTypesHtml(c){
-  return Object.entries(c.byType).sort((a,b) => b[1] - a[1]).map(([t,v]) => {
-    const cat = getCat('itin', t);
-    return `<span class="bud-pill">${cat.icon} ${escapeHtml(cat.label)} ${fmtYen(v)}</span>`;
-  }).join('');
+  const known = {}; let other = 0;
+  Object.entries(c.byType).forEach(([t,v]) => { if(t && CAT.itin[t]) known[t] = v; else other += v; });
+  const ents = Object.entries(known).sort((a,b) => b[1] - a[1]);
+  if(!ents.length) return ''; // nothing meaningful to split by
+  let html = ents.map(([t,v]) => `<span class="bud-pill">${CAT.itin[t].icon} ${escapeHtml(CAT.itin[t].label)} ${fmtYen(v)}</span>`).join('');
+  if(other > 0) html += `<span class="bud-pill">其他 ${fmtYen(other)}</span>`;
+  return html;
 }
-function budActualText(c){
+function budConvText(total){
+  return `≈ CAD $${Math.round(total * JPY_TO_CAD).toLocaleString()}　｜　HKD $${Math.round(total * JPY_TO_HKD).toLocaleString()}`;
+}
+function budActualText(){
   const actual = expenses.reduce((s,e) => s + Number(e.amount || 0), 0);
-  if(!actual) return '';
-  const pct = c.total > 0 ? `（約佔預估 ${Math.round(actual / c.total * 100)}%）` : '';
-  return `實際已記錄 ${fmtYen(actual)}${pct}`;
+  return actual ? `實際已記錄 ${fmtYen(actual)}` : '';
+}
+function budTotalLabel(){ return '預估總支出' + (budFilter === 'pre' ? '（預付）' : budFilter === 'later' ? '（到時付）' : ''); }
+
+function budRowHtml(r){
+  const v = budget[r.id], pay = budPayOf(r.id), val = v === undefined ? '' : String(v);
+  const lead = r.custom ? `<span class="bud-tag">自訂</span>` : (r.time ? `<span class="bud-time">${escapeHtml(r.time)}</span>` : '');
+  return `<div class="bud-row">
+    <div class="bud-info"><div class="bud-title">${escapeHtml(r.title)}</div>
+      <div class="bud-sub">${lead}<button class="pay-chip ${pay}" onclick="budTogglePay('${r.id}')">${pay === 'pre' ? '預付' : '到時付'}</button></div></div>
+    <div class="bud-amt"><span>¥</span><input class="bud-input" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="0" value="${val}" data-id="${r.id}" data-prev="${val}" oninput="budInput(this)" onchange="budChange(this)"></div>
+    <button class="bud-del" aria-label="移除" onclick="budRemove('${r.id}')">✕</button>
+  </div>`;
+}
+function budGroupHtml(label, key, c){
+  const rows = c.rows.filter(r => r.group === key && budMatches(r));
+  if(!rows.length) return '';
+  return `<div class="bud-day"><div class="bud-day-head"><span>${label}</span><span class="bud-day-sum" data-day="${key}">${fmtYen(c.byGroup[key] || 0)}</span></div>${rows.map(budRowHtml).join('')}</div>`;
 }
 function renderBudget(){
   const wrap = document.getElementById('exp-budget'); if(!wrap) return;
   const c = budgetCompute();
-  let html;
-  if(c.count === 0){
-    html = `<div class="empty-state"><div class="em">🧾</div><div class="t">行程裡面未有項目<br>先喺「行程」頁加入項目，呢度就會自動生成預算表</div></div>`;
+  let html = '';
+  if(c.nAll === 0){
+    html += `<div class="empty-state"><div class="em">🧾</div><div class="t">行程裡面未有項目<br>可以撳右上角「+ 新增項目」自己加</div></div>`;
   } else {
-    html = `<div class="summary-card">
+    html += `<div class="tabs-row">` + [['all', `全部 (${c.nAll})`], ['pre', `預付 (${c.nPre})`], ['later', `到時付 (${c.nLater})`]]
+      .map(([k,l]) => `<div class="chip ${budFilter === k ? 'active' : ''}" onclick="setBudFilter('${k}')">${l}</div>`).join('') + `</div>`;
+    html += `<div class="summary-card">
       <div class="summary-top">
-        <div class="summary-total"><div class="lbl">預估總支出</div><div class="val" id="bud-total">${fmtYen(c.total)}</div></div>
+        <div class="summary-total"><div class="lbl" id="bud-lbl">${budTotalLabel()}</div><div class="val" id="bud-total">${fmtYen(c.total)}</div></div>
         <div class="summary-avg"><div class="lbl">已填寫</div><div class="val" id="bud-filled">${c.filled} / ${c.count}</div></div>
       </div>
+      <div class="bud-conv" id="bud-conv">${budConvText(c.total)}</div>
+      <div class="bud-rate">匯率約數：¥100 ≈ CAD ${(100 * JPY_TO_CAD).toFixed(2)} ≈ HKD ${(100 * JPY_TO_HKD).toFixed(2)}（只作估算，唔會自動更新）</div>
       <div class="bud-types" id="bud-types">${budTypesHtml(c)}</div>
-      <div class="bud-actual" id="bud-actual">${budActualText(c)}</div>
+      <div class="bud-actual" id="bud-actual">${budActualText()}</div>
     </div>`;
-    TRIP_DAYS.forEach(day => {
-      const key = fmtKey(day);
-      const items = (itinerary[key] || []).slice().sort((a,b) => (a.time || '').localeCompare(b.time || ''));
-      if(!items.length) return;
-      html += `<div class="bud-day"><div class="bud-day-head"><span>📅 ${day.getMonth()+1}月${day.getDate()}日 (週${DOW[day.getDay()]})</span><span class="bud-day-sum" data-day="${key}">${fmtYen(c.byDay[key] || 0)}</span></div>`;
-      items.forEach(it => {
-        const cat = getCat('itin', it.type);
-        const v = Number(budget[it.id]) || 0;
-        html += `<div class="bud-row">
-          <div class="bud-ic" style="background:${cat.color}22;color:${cat.color}">${cat.icon}</div>
-          <div class="bud-info"><div class="bud-title">${escapeHtml(it.title || '未命名')}</div>${it.time ? `<div class="bud-time">${escapeHtml(it.time)}</div>` : ''}</div>
-          <div class="bud-amt"><span>¥</span><input class="bud-input" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="0" value="${v || ''}" data-id="${it.id}" data-prev="${v}" oninput="budInput(this)" onchange="budChange(this)"></div>
-        </div>`;
-      });
-      html += `</div>`;
-    });
+    html += budGroupHtml('📝 其他項目（非行程）', 'custom', c);
+    TRIP_DAYS.forEach(day => { html += budGroupHtml(`📅 ${day.getMonth()+1}月${day.getDate()}日 (週${DOW[day.getDay()]})`, fmtKey(day), c); });
+    if(c.count === 0) html += `<div class="empty-state"><div class="t">呢個篩選之下冇項目</div></div>`;
+  }
+  const hid = budHiddenItems();
+  if(hid.length){
+    html += `<div class="bud-hidden"><div class="bud-hidden-head" onclick="budToggleHidden()">已移除 ${hid.length} 項 ${budShowHidden ? '▴' : '▾'}</div>`;
+    if(budShowHidden){
+      html += `<div class="bud-hidden-note">呢啲行程項目只係唔計入預算，行程入面仍然保留</div>`
+        + hid.map(h => `<div class="bud-hidden-row"><span>${escapeHtml(h.title)}</span><button class="pay-chip later" onclick="budRestore('${h.id}')">還原</button></div>`).join('');
+    }
+    html += `</div>`;
   }
   if(html !== lastBudHtml){ wrap.innerHTML = html; lastBudHtml = html; }
 }
 function updateBudgetTotals(){
   const c = budgetCompute();
   const set = (id, txt) => { const el = document.getElementById(id); if(el) el.textContent = txt; };
-  set('bud-total', fmtYen(c.total)); set('bud-filled', `${c.filled} / ${c.count}`); set('bud-actual', budActualText(c));
+  set('bud-total', fmtYen(c.total)); set('bud-filled', `${c.filled} / ${c.count}`); set('bud-conv', budConvText(c.total)); set('bud-actual', budActualText());
   const ty = document.getElementById('bud-types'); if(ty) ty.innerHTML = budTypesHtml(c);
-  document.querySelectorAll('.bud-day-sum').forEach(el => { el.textContent = fmtYen(c.byDay[el.dataset.day] || 0); });
+  document.querySelectorAll('.bud-day-sum').forEach(el => { el.textContent = fmtYen(c.byGroup[el.dataset.day] || 0); });
+}
+
+// digits only (accepts full-width digits / commas from CJK keyboards); "0" is a real answer, "" means not filled in yet
+function budClean(str){
+  const s = String(str).replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0)).replace(/\D/g, '').slice(0, 9);
+  return s === '' ? '' : String(parseInt(s, 10));
 }
 function budInput(el){
-  // accept full-width digits and commas from CJK keyboards; keep digits only
-  const clean = el.value.replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0)).replace(/\D/g, '').slice(0, 9);
+  const clean = budClean(el.value);
   if(clean !== el.value) el.value = clean;
-  const v = clean === '' ? 0 : parseInt(clean, 10);
-  if(v > 0) budget[el.dataset.id] = v; else delete budget[el.dataset.id];
+  if(clean === '') delete budget[el.dataset.id]; else budget[el.dataset.id] = parseInt(clean, 10);
   lastBudHtml = ''; // the screen now differs from the last full render
   updateBudgetTotals();
 }
 // Saves run strictly one after another, so a slow earlier save can never overwrite a newer one.
-function saveBudget(){
+function saveBudgetFile(name){
   budPending++;
-  const run = budChain.then(() => saveKey('budget.json', budget)).catch(() => false);
+  const run = budChain.then(() => saveKey(name, name === 'budget.json' ? budget : budMeta)).catch(() => false);
   budChain = run;
   return run.then(ok => { budPending--; return ok; });
 }
 async function budChange(el){
   const id = el.dataset.id;
-  const prev = Number(el.dataset.prev || 0);
-  const cur = Number(budget[id]) || 0;
+  const prev = el.dataset.prev === '' ? undefined : Number(el.dataset.prev);
+  const cur = budget[id];
   if(cur === prev) return;
-  const ok = await saveBudget();
-  if(ok){ el.dataset.prev = String(cur); return; }
-  if(prev > 0) budget[id] = prev; else delete budget[id];
-  el.value = prev > 0 ? String(prev) : '';
+  const ok = await saveBudgetFile('budget.json');
+  if(ok){ el.dataset.prev = cur === undefined ? '' : String(cur); return; }
+  if(prev === undefined) delete budget[id]; else budget[id] = prev;
+  el.value = prev === undefined ? '' : String(prev);
   lastBudHtml = '';
   updateBudgetTotals();
   showToast('儲存失敗，已還原，請再試一次');
+}
+
+// ---- changes to the structure of the budget (payment type, remove, restore, add) ----
+function budSnap(){ return { meta: JSON.stringify(budMeta), budget: JSON.stringify(budget) }; }
+async function budCommit(files, snap){
+  let ok = true;
+  for(const f of files){ if(!(await saveBudgetFile(f))){ ok = false; break; } }
+  if(ok) return true;
+  budMeta = JSON.parse(snap.meta); budget = JSON.parse(snap.budget);
+  lastBudHtml = ''; renderBudget();
+  showToast('儲存失敗，已還原，請再試一次');
+  return false;
+}
+async function budTogglePay(id){
+  const snap = budSnap();
+  if(budPayOf(id) === 'pre') delete budMeta.pay[id]; else budMeta.pay[id] = 'pre';
+  lastBudHtml = ''; renderBudget();
+  await budCommit(['budget-meta.json'], snap);
+}
+async function budRemove(id){
+  const snap = budSnap();
+  const custom = budMeta.custom.find(c => c.id === id);
+  if(custom){
+    if(!confirm(`刪除預算項目「${custom.title}」？`)) return;
+    budMeta.custom = budMeta.custom.filter(c => c.id !== id);
+    delete budMeta.pay[id]; delete budget[id];
+    lastBudHtml = ''; renderBudget();
+    await budCommit(['budget-meta.json', 'budget.json'], snap);
+  } else {
+    const row = budAllRows().find(r => r.id === id); if(!row) return;
+    if(!confirm(`由預算表移除「${row.title}」？\n（行程裡面嘅項目唔會被刪除，之後可以喺最底「已移除」還原）`)) return;
+    budMeta.hidden[id] = true;
+    lastBudHtml = ''; renderBudget();
+    await budCommit(['budget-meta.json'], snap);
+  }
+}
+async function budRestore(id){
+  const snap = budSnap();
+  delete budMeta.hidden[id];
+  lastBudHtml = ''; renderBudget();
+  await budCommit(['budget-meta.json'], snap);
+}
+function budToggleHidden(){ budShowHidden = !budShowHidden; lastBudHtml = ''; renderBudget(); }
+function setBudFilter(v){ budFilter = v; try{ localStorage.setItem('budFilter', v); }catch(e){} lastBudHtml = ''; renderBudget(); }
+
+// ---- add your own budget item (flights, hotel, passes ... anything not in the itinerary) ----
+function setBudEditPay(v){
+  budEditPay = v;
+  document.getElementById('bd-pay-pre').classList.toggle('sel', v === 'pre');
+  document.getElementById('bd-pay-later').classList.toggle('sel', v === 'later');
+}
+function openBudItemModal(){
+  document.getElementById('bd-title').value = ''; document.getElementById('bd-amount').value = '';
+  setBudEditPay(budFilter === 'pre' ? 'pre' : 'later');
+  document.getElementById('bud-overlay').classList.add('show');
+}
+async function saveBudItem(){
+  if(isSavingBud) return; isSavingBud = true;
+  const btn = document.getElementById('bd-save-btn'); if(btn) btn.disabled = true;
+  try{
+    const title = document.getElementById('bd-title').value.trim();
+    if(!title){ alert('請輸入項目名稱'); return; }
+    const amt = budClean(document.getElementById('bd-amount').value);
+    const id = 'x' + Date.now();
+    const snap = budSnap();
+    budMeta.custom.push({ id, title });
+    if(budEditPay === 'pre') budMeta.pay[id] = 'pre';
+    if(amt !== '') budget[id] = parseInt(amt, 10);
+    if(budFilter !== 'all' && budFilter !== budEditPay){ budFilter = 'all'; try{ localStorage.setItem('budFilter', 'all'); }catch(e){} } // make sure you can see it
+    lastBudHtml = ''; renderBudget();
+    // amount first, then the list entry: if the second save fails we are left with an invisible orphan amount, never a half-filled line
+    const ok = await budCommit(amt !== '' ? ['budget.json', 'budget-meta.json'] : ['budget-meta.json'], snap);
+    if(ok) closeModal('bud-overlay');
+  } finally { isSavingBud = false; if(btn) btn.disabled = false; }
 }
 
 function renderExpTabs(){
@@ -1453,7 +1623,9 @@ function applyExpView(){
   const b = expView === 'budget';
   document.getElementById('exp-actual').style.display = b ? 'none' : 'block';
   document.getElementById('exp-budget').style.display = b ? 'block' : 'none';
-  document.getElementById('exp-add-btn').style.display = b ? 'none' : '';
+  const btn = document.getElementById('exp-add-btn');
+  btn.textContent = b ? '+ 新增項目' : '+ 新增支出';
+  btn.onclick = b ? openBudItemModal : openExpenseModal;
   document.getElementById('exp-title').textContent = b ? '預算估算' : '支出總覽';
   renderExpTabs();
   if(b) renderBudget();
